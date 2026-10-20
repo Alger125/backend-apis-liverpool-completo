@@ -633,7 +633,7 @@ export class AuthService {
           status?: string;
         }> = await this.dataSource.query(
           `
-          SELECT id, full_name, email, status
+          SELECT id, display_name AS full_name, email, status
           FROM zd_security.app_user
           WHERE id::text = $1 OR LOWER(email) = LOWER($2)
           LIMIT 1

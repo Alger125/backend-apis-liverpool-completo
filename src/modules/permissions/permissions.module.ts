@@ -59,6 +59,5 @@ export class PermissionsController {
   imports: [TypeOrmModule.forFeature([PermissionEntity])],
   controllers: [PermissionsController],
   providers: [ApiKeyGuard, PermissionsGuard],
-  exports: [PermissionsController],
 })
 export class PermissionsModule {}
