@@ -1,4 +1,4 @@
-﻿import {
+import {
   Body,
   Controller,
   Get,
@@ -25,17 +25,17 @@ import {
   UpdateScheduledChangeDto,
 } from "./dto/structures-planning.dto";
 
-@ApiTags("PlanificaciÃ³n Futura, Cambios Programados y Calendario de Corte (HU-48/49, HU-049 a HU-052)")
+@ApiTags("Planificación Futura, Cambios Programados y Calendario de Corte (HU-48/49, HU-049 a HU-052)")
 @ApiSecurity("dev-api-key")
 @ApiHeader({
   name: "x-dev-api-key",
-  description: "Llave de autorizaciÃ³n para desarrollo local",
+  description: "Llave de autorización para desarrollo local",
   required: false,
 })
 @Controller("structures")
 @UseGuards(ApiKeyGuard, PermissionsGuard)
 export class StructuresPlanningController {
-  constructor(private readonly StructuresPlanningService: StructuresPlanningService) {}
+  constructor(private readonly structuresPlanningService: StructuresPlanningService) {}
 
   @Post("departments/:departmentId/future-draft/init")
   @HttpCode(HttpStatus.CREATED)
@@ -43,26 +43,28 @@ export class StructuresPlanningController {
   @ApiOperation({
     summary:
       "Derivar / Clonar Estructura Futura (Copy-on-Write mes + 1) desde Periodo Vigente (HU-48 / HU-49 / HU-047)",
+    operationId: "StructuresPlanningController_initFutureDraft",
   })
   initFutureDraft(
     @Param("departmentId", ParseUUIDPipe) departmentId: string,
     @Body() dto: InitFutureDraftDto,
     @Req() request: AuthenticatedRequest
   ) {
-    return this.StructuresPlanningService.initFutureDraft(departmentId, dto, request?.user?.id);
+    return this.structuresPlanningService.initFutureDraft(departmentId, dto, request?.user?.id);
   }
 
   @Get("scheduled-changes")
   @RequirePermissions("PLANNING_VIEW")
   @ApiOperation({
     summary: "Listar Cambios Estructurales Programados para Periodos Futuros (HU-049)",
+    operationId: "StructuresPlanningController_listScheduledChanges",
   })
   listScheduledChanges(
     @Query("departmentId") departmentId?: string,
     @Query("targetPeriod") targetPeriod?: string,
     @Query("status") status?: string
   ) {
-    return this.StructuresPlanningService.listScheduledChanges(departmentId, targetPeriod, status);
+    return this.structuresPlanningService.listScheduledChanges(departmentId, targetPeriod, status);
   }
 
   @Post("scheduled-changes")
@@ -70,25 +72,27 @@ export class StructuresPlanningController {
   @RequirePermissions("PLANNING_PUBLISH")
   @ApiOperation({
     summary: "Programar Cambio Estructural para Periodo Futuro (HU-049)",
+    operationId: "StructuresPlanningController_createScheduledChange",
   })
   createScheduledChange(
     @Body() dto: CreateScheduledChangeDto,
     @Req() request: AuthenticatedRequest
   ) {
-    return this.StructuresPlanningService.createScheduledChange(dto, request?.user?.id);
+    return this.structuresPlanningService.createScheduledChange(dto, request?.user?.id);
   }
 
   @Put("scheduled-changes/:changeId")
   @RequirePermissions("PLANNING_PUBLISH")
   @ApiOperation({
     summary: "Editar Cambio Programado Antes de su Fecha de Vigencia (HU-049 / CU-ADM-006 A5)",
+    operationId: "StructuresPlanningController_updateScheduledChange",
   })
   updateScheduledChange(
     @Param("changeId") changeId: string,
     @Body() dto: UpdateScheduledChangeDto,
     @Req() request: AuthenticatedRequest
   ) {
-    return this.StructuresPlanningService.updateScheduledChange(changeId, dto, request?.user?.id);
+    return this.structuresPlanningService.updateScheduledChange(changeId, dto, request?.user?.id);
   }
 
   @Post("scheduled-changes/:changeId/cancel")
@@ -96,14 +100,15 @@ export class StructuresPlanningController {
   @RequirePermissions("PLANNING_PUBLISH")
   @ApiOperation({
     summary:
-      "Cancelar Cambio Programado Antes de su Entrada en Vigor con BitÃ¡cora (HU-050 / CU-ADM-006 A6)",
+      "Cancelar Cambio Programado Antes de su Entrada en Vigor con Bitácora (HU-050 / CU-ADM-006 A6)",
+    operationId: "StructuresPlanningController_cancelScheduledChange",
   })
   cancelScheduledChange(
     @Param("changeId") changeId: string,
     @Body() dto: CancelScheduledChangeDto,
     @Req() request: AuthenticatedRequest
   ) {
-    return this.StructuresPlanningService.cancelScheduledChange(changeId, dto, request?.user?.id);
+    return this.structuresPlanningService.cancelScheduledChange(changeId, dto, request?.user?.id);
   }
 
   @Post("periods/:periodCode/activate")
@@ -111,27 +116,28 @@ export class StructuresPlanningController {
   @RequirePermissions("PLANNING_PUBLISH")
   @ApiOperation({
     summary:
-      "Activar PlanificaciÃ³n Publicada del Periodo en su Fecha de Vigencia y Archivar Snapshot Anterior (HU-051)",
+      "Activar Planificación Publicada del Periodo en su Fecha de Vigencia y Archivar Snapshot Anterior (HU-051)",
+    operationId: "StructuresPlanningController_activatePlannedPeriod",
   })
   activatePlannedPeriod(
     @Param("periodCode") periodCode: string,
     @Body() dto: ActivatePeriodDto,
     @Req() request: AuthenticatedRequest
   ) {
-    return this.StructuresPlanningService.activatePlannedPeriod(periodCode, dto, request?.user?.id);
+    return this.structuresPlanningService.activatePlannedPeriod(periodCode, dto, request?.user?.id);
   }
 
   @Put("calendar/operational-cutoff")
   @RequirePermissions("PLANNING_PUBLISH")
   @ApiOperation({
     summary:
-      "Configurar Calendario Operativo de Corte y Ventana de EdiciÃ³n / Bloqueo (HU-052 / ERF Â§7)",
+      "Configurar Calendario Operativo de Corte y Ventana de Edición / Bloqueo (HU-052 / ERF §7)",
+    operationId: "StructuresPlanningController_configureOperationalCutoff",
   })
   configureOperationalCutoff(
     @Body() dto: UpdateOperationalCutoffConfigDto,
     @Req() request: AuthenticatedRequest
   ) {
-    return this.StructuresPlanningService.configureOperationalCutoff(dto, request?.user?.id);
+    return this.structuresPlanningService.configureOperationalCutoff(dto, request?.user?.id);
   }
 }
-

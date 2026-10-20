@@ -1,4 +1,4 @@
-﻿import {
+import {
   BadRequestException,
   ConflictException,
   HttpException,
@@ -131,7 +131,7 @@ export class StructuresPlanningService {
   }
 
   /**
-   * HU-48 / HU-49 (HU-047 / H06): DerivaciÃ³n automÃ¡tica (copy-on-write) de estructura futura (mes + 1)
+   * HU-48 / HU-49 (HU-047 / H06): Derivación automática (copy-on-write) de estructura futura (mes + 1)
    */
   async initFutureDraft(
     departmentId: string,
@@ -148,7 +148,7 @@ export class StructuresPlanningService {
     const calConfig = this.calendarConfigs.get(dto.targetPeriod);
     if (calConfig?.isLockedByCalculation) {
       throw new HttpException(
-        "El periodo objetivo se encuentra bloqueado por cÃ¡lculo de planes.",
+        "El periodo objetivo se encuentra bloqueado por cálculo de planes.",
         HttpStatus.LOCKED
       );
     }
@@ -222,7 +222,7 @@ export class StructuresPlanningService {
     const calConfig = this.calendarConfigs.get(dto.targetPeriod);
     if (calConfig?.isLockedByCalculation) {
       throw new HttpException(
-        "El calendario operativo se encuentra bloqueado por cÃ¡lculo de planes.",
+        "El calendario operativo se encuentra bloqueado por cálculo de planes.",
         HttpStatus.LOCKED
       );
     }
@@ -305,7 +305,7 @@ export class StructuresPlanningService {
   }
 
   /**
-   * HU-050 (CU-ADM-006 A6): Cancelar un cambio programado antes de su fecha de entrada en vigor conservando bitÃ¡cora
+   * HU-050 (CU-ADM-006 A6): Cancelar un cambio programado antes de su fecha de entrada en vigor conservando bitácora
    */
   async cancelScheduledChange(
     changeId: string,
@@ -347,7 +347,7 @@ export class StructuresPlanningService {
   }
 
   /**
-   * HU-051: Activar la planificaciÃ³n publicada al llegar la fecha de vigencia del periodo
+   * HU-051: Activar la planificación publicada al llegar la fecha de vigencia del periodo
    */
   async activatePlannedPeriod(
     periodCode: string,
@@ -355,7 +355,7 @@ export class StructuresPlanningService {
     userId?: string
   ) {
     if (!/^\d{4}-\d{2}$/.test(periodCode)) {
-      throw new BadRequestException("El cÃ³digo del periodo debe tener formato YYYY-MM.");
+      throw new BadRequestException("El código del periodo debe tener formato YYYY-MM.");
     }
 
     const pendingChanges = this.scheduledChangesStore.filter(
@@ -415,7 +415,7 @@ export class StructuresPlanningService {
   }
 
   /**
-   * HU-052 (ERF Â§7): Configurar el calendario operativo de corte (dÃ­as naturales de ventana y bloqueo por cÃ¡lculo)
+   * HU-052 (ERF §7): Configurar el calendario operativo de corte (días naturales de ventana y bloqueo por cálculo)
    */
   async configureOperationalCutoff(
     dto: UpdateOperationalCutoffConfigDto,

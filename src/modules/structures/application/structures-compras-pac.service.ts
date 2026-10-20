@@ -1,4 +1,4 @@
-﻿import {
+import {
   BadRequestException,
   ConflictException,
   Injectable,
@@ -38,7 +38,7 @@ export class StructuresComprasPacService {
   }> = [
     {
       departmentCode: "DEPT-COMPRAS-HL",
-      displayName: "DirecciÃ³n de Compras Hardline (Muebles, ElectrÃ³nica y Hogar)",
+      displayName: "Dirección de Compras Hardline (Muebles, Electrónica y Hogar)",
       structureType: "COMPRAS",
       division: "HARDLINE",
       isActive: true,
@@ -46,7 +46,7 @@ export class StructuresComprasPacService {
     },
     {
       departmentCode: "DEPT-COMPRAS-SL",
-      displayName: "DirecciÃ³n de Compras Softline (Moda, Calzado y PerfumerÃ­a)",
+      displayName: "Dirección de Compras Softline (Moda, Calzado y Perfumería)",
       structureType: "COMPRAS",
       division: "SOFTLINE",
       isActive: true,
@@ -54,7 +54,7 @@ export class StructuresComprasPacService {
     },
     {
       departmentCode: "DEPT-PAC-OMNI",
-      displayName: "CoordinaciÃ³n General PAC y AtenciÃ³n Omnicanal",
+      displayName: "Coordinación General PAC y Atención Omnicanal",
       structureType: "PAC",
       division: "OMNICANAL",
       isActive: true,
@@ -97,7 +97,7 @@ export class StructuresComprasPacService {
   }> = [];
 
   /**
-   * HU-022 (DEC-15): Consultar configuraciÃ³n parametrizable de departamentos base para Compras y PAC
+   * HU-022 (DEC-15): Consultar configuración parametrizable de departamentos base para Compras y PAC
    */
   async getBaseDepartmentsConfig(structureType?: "COMPRAS" | "PAC") {
     const items = structureType
@@ -112,7 +112,7 @@ export class StructuresComprasPacService {
   }
 
   /**
-   * HU-022 (DEC-15): Actualizar configuraciÃ³n de departamentos base de Compras y PAC sin cambios de cÃ³digo
+   * HU-022 (DEC-15): Actualizar configuración de departamentos base de Compras y PAC sin cambios de código
    */
   async updateBaseDepartmentsConfig(
     dto: UpdateBaseDepartmentsConfigDto,
@@ -123,7 +123,7 @@ export class StructuresComprasPacService {
       const code = item.departmentCode.trim().toUpperCase();
       if (seen.has(code)) {
         throw new ConflictException(
-          `El cÃ³digo de departamento base '${code}' estÃ¡ duplicado en la solicitud.`
+          `El código de departamento base '${code}' está duplicado en la solicitud.`
         );
       }
       seen.add(code);
@@ -172,9 +172,9 @@ export class StructuresComprasPacService {
 
   /**
    * HU-020, HU-021, HU-023 (DEC-01):
-   * - HU-020: NavegaciÃ³n de estructura Compras (Hardline/Softline) sin requerir grupos operativos (DEC-01).
-   * - HU-021: NavegaciÃ³n de estructura PAC.
-   * - HU-023: ExclusiÃ³n automÃ¡tica de unidades administrativas/RH no comerciales.
+   * - HU-020: Navegación de estructura Compras (Hardline/Softline) sin requerir grupos operativos (DEC-01).
+   * - HU-021: Navegación de estructura PAC.
+   * - HU-023: Exclusión automática de unidades administrativas/RH no comerciales.
    */
   async getComprasPacTree(query: GetComprasPacTreeQueryDto) {
     const excludeNonCommercial = query.excludeNonCommercial !== false;
@@ -189,7 +189,7 @@ export class StructuresComprasPacService {
     if (activeBaseDepts.length === 0) {
       throw new NotFoundException(
         `No se encontraron departamentos base activos para la estructura ${query.structureType}${
-          query.baseDepartmentCode ? ` con cÃ³digo ${query.baseDepartmentCode}` : ""
+          query.baseDepartmentCode ? ` con código ${query.baseDepartmentCode}` : ""
         }.`
       );
     }
@@ -197,38 +197,38 @@ export class StructuresComprasPacService {
     const rawUnits = [
       {
         unitCode: "DEPT-COMPRAS-HL",
-        displayName: "DirecciÃ³n de Compras Hardline",
+        displayName: "Dirección de Compras Hardline",
         structureType: "COMPRAS",
         isCommercial: true,
         leader: {
           employeeId: "EMP-COMP-001",
-          name: "Roberto MÃ©ndez Vega",
+          name: "Roberto Méndez Vega",
           positionTitle: "Director de Compras Hardline",
         },
         directSections: [
-          { code: "0129", name: "ElectrÃ³nica y Pantallas", buyerName: "Laura GÃ³mez", isAnchor: true },
-          { code: "0130", name: "CÃ³mputo y TelefonÃ­a", buyerName: "Laura GÃ³mez", isAnchor: false },
-          { code: "0131", name: "LÃ­nea Blanca y Enseres", buyerName: "Carlos Ruiz", isAnchor: true },
+          { code: "0129", name: "Electrónica y Pantallas", buyerName: "Laura Gómez", isAnchor: true },
+          { code: "0130", name: "Cómputo y Telefonía", buyerName: "Laura Gómez", isAnchor: false },
+          { code: "0131", name: "Línea Blanca y Enseres", buyerName: "Carlos Ruiz", isAnchor: true },
         ],
       },
       {
         unitCode: "DEPT-COMPRAS-SL",
-        displayName: "DirecciÃ³n de Compras Softline",
+        displayName: "Dirección de Compras Softline",
         structureType: "COMPRAS",
         isCommercial: true,
         leader: {
           employeeId: "EMP-COMP-002",
-          name: "SofÃ­a HernÃ¡ndez Lara",
+          name: "Sofía Hernández Lara",
           positionTitle: "Directora de Compras Softline",
         },
         directSections: [
-          { code: "0201", name: "Damas y Moda ContemporÃ¡nea", buyerName: "Elena Torres", isAnchor: true },
-          { code: "0202", name: "PerfumerÃ­a y CosmÃ©ticos", buyerName: "Elena Torres", isAnchor: false },
+          { code: "0201", name: "Damas y Moda Contemporánea", buyerName: "Elena Torres", isAnchor: true },
+          { code: "0202", name: "Perfumería y Cosméticos", buyerName: "Elena Torres", isAnchor: false },
         ],
       },
       {
         unitCode: "DEPT-COMPRAS-RH-ADM",
-        displayName: "CoordinaciÃ³n Administrativa y RH Compras",
+        displayName: "Coordinación Administrativa y RH Compras",
         structureType: "COMPRAS",
         isCommercial: false,
         leader: {
@@ -240,17 +240,17 @@ export class StructuresComprasPacService {
       },
       {
         unitCode: "DEPT-PAC-OMNI",
-        displayName: "CoordinaciÃ³n General PAC y AtenciÃ³n Omnicanal",
+        displayName: "Coordinación General PAC y Atención Omnicanal",
         structureType: "PAC",
         isCommercial: true,
         leader: {
           employeeId: "EMP-PAC-001",
-          name: "Mariana VÃ¡zquez",
+          name: "Mariana Vázquez",
           positionTitle: "Gerente Nacional PAC",
         },
         directSections: [
-          { code: "0901", name: "MÃ³dulo PAC AtenciÃ³n Clientes", buyerName: "MÃ³nica Silva", isAnchor: true },
-          { code: "0902", name: "MÃ³dulo Click & Collect / Omnicanal", buyerName: "MÃ³nica Silva", isAnchor: false },
+          { code: "0901", name: "Módulo PAC Atención Clientes", buyerName: "Mónica Silva", isAnchor: true },
+          { code: "0902", name: "Módulo Click & Collect / Omnicanal", buyerName: "Mónica Silva", isAnchor: false },
         ],
       },
       {
@@ -353,25 +353,25 @@ export class StructuresComprasPacService {
       fullName: "Colaborador Comercial Asignado",
       anchorSection: {
         code: "0129",
-        name: "ElectrÃ³nica y Pantallas",
+        name: "Electrónica y Pantallas",
         isAnchor: true,
       },
       group: {
         id: "64257972-f2f8-58c6-b88e-d724c3e78cce",
         displayCode: "Grupo 001",
-        name: "Grupo TecnologÃ­a e Imagen",
+        name: "Grupo Tecnología e Imagen",
       },
       managedSectionsCount: 3,
       managedSections: [
         {
           code: "0129",
-          name: "ElectrÃ³nica y Pantallas",
+          name: "Electrónica y Pantallas",
           isAnchor: true,
           inheritanceSource: "ANCHOR_CONTRACT",
         },
         {
           code: "0130",
-          name: "CÃ³mputo y TelefonÃ­a",
+          name: "Cómputo y Telefonía",
           isAnchor: false,
           inheritanceSource: "GROUP_MEMBERSHIP",
         },
@@ -530,7 +530,7 @@ export class StructuresComprasPacService {
   }
 
   /**
-   * HU-44 (HU-045 / P-01): Consultar bandeja de salida (Outbox) de sincronizaciÃ³n hacia Employee Central
+   * HU-44 (HU-045 / P-01): Consultar bandeja de salida (Outbox) de sincronización hacia Employee Central
    */
   async getEcOutbox(employeeId?: string) {
     const items = employeeId
