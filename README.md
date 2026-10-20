@@ -1,9 +1,11 @@
-# backend-apis-liverpool-completo
+# ZDeptos API - Backend Integrado (Liverpool) 1.0.0
+**OAS 3.0**
 
-# ZDeptos API Unificada — Liverpool (Backend Integrado)
-**Plataforma de Misión Crítica para Estructuras Organizacionales, Seguridad, Auditoría, Planificación y Reportes**
-
-Sistema backend de misión crítica desarrollado en **NestJS 11 + TypeORM + PostgreSQL (`zdeptos`)**, con arquitectura modular limpia, validación exhaustiva de contratos (DTOs con `class-validator` y `class-transformer`), seguridad por roles y tramos de control (`SearchScopeEnforcer`), control de concurrencia optimista (`If-Match` / `version`), bitácora inmutable de auditoría y soporte para exportaciones de alto volumen.
+## ZDeptos: Sistema de Gestión de Departamentos Comerciales
+Plataforma transaccional de misión crítica que integra:
+* **Feature 01 (Seguridad y Gobernanza):** Catálogo de permisos, administración de roles, matriz de impacto y asignaciones con alcance operativo (access scopes).
+* **Feature 02 (Estructura Comercial y Grupos):** Selectores de geografía comercial, árbol jerárquico de 6 niveles, autonumeración atómica de grupos (P-02), protección de secciones ancla 🔒 (RN-030), Drag & Drop de secciones virtuales, corte operativo y publicación departamental.
+* **Feature 03 (Reportes, Historial y Cargas Masivas):** Vistas previas dinámicas por rol y general, exportación CSV y TXT delimitado por pipes (|), consulta inmutable de auditoría (ERF §7) y validación/ejecución transaccional de cargas masivas iniciales (CU-CIN-001).
 
 ---
 
@@ -34,366 +36,253 @@ npm run start:dev
 
 ---
 
-## 🏛️ Arquitectura de Features y Esquemas de Base de Datos
-
-| Feature | Dominio Funcional | Módulos NestJS | Esquemas PostgreSQL |
-| :--- | :--- | :--- | :--- |
-| **Feature 01** | Autenticación SSO, Sesión, Roles, Permisos y Excepciones | `AuthModule`, `HomeSearchModule`, `RolesModule`, `AccessManagementModule` | `zd_security`, `zd_audit` |
-| **Feature 02** | Geografía, Estructura Comercial (6 niveles), Grupos P-02, Secciones Ancla y Drag & Drop | `GeographyModule`, `StructuresModule` | `zd_core`, `zd_ref`, `zd_plan` |
-| **Feature 02-B** | Estructuras Corporativas (Compras / PAC), Suburbia y Sincronización Employee Central | `StructuresModule` (compras-pac, integrations/ec) | `zd_core`, `zd_ref`, `zd_integration` |
-| **Feature 02-C** | Planeación de Mes Futuro (Copy-on-Write), Cambios Programados y Corte Operativo | `StructuresModule` (planning, future-draft, calendar) | `zd_plan`, `zd_core`, `zd_audit` |
-| **Feature 03** | Reportes Dinámicos por Rol/General, Modelos de Compensaciones y Exportación CSV/TXT | `ReportsModule` | `zd_reporting`, `zd_core`, `zd_plan` |
-| **Feature 03-B** | Bitácora Inmutable de Auditoría (ERF §7) con visor Before/After | `AuditModule` | `zd_audit` |
-| **Feature 03-C** | Carga Masiva Transaccional (CU-CIN-001) con modo prueba (dryRun) | `BatchImportModule` | `zd_core`, `zd_audit` |
+## 📦 Mapa Exhaustivo de APIs (Documentación Oficial Swagger OAS 3.0)
 
 ---
 
-## 📦 Catálogo Completo de APIs (Explicación por Endpoint y Feature)
+### [0. Sistema y Monitoreo (Health Check)]
+*Sondas de disponibilidad y verificación de salud de la aplicación.*
+
+* `GET /api/v1/health` — `HealthController_getHealth`
+  * **Descripción:** Verifica el estado operativo del servicio y la conectividad activa con PostgreSQL.
 
 ---
 
-### 1. Feature 01 — Autenticación SSO, Sesión y Bienvenida
+### [Feature 01: Autenticación SSO y Gestión de Sesiones (HU-01 a HU-06)]
+*Flujos de autenticación federada, prolongación de sesión y revocación.*
 
-#### `POST /api/v1/auth/sso/token`
-* **Feature / Historia:** Feature 01 | `HU-01`, `HU-02`, `HU-04` (`HU-001`, `HU-002`)
-* **Propósito:** Intercambio seguro del `idToken` emitido por Microsoft Entra ID. Valida la firma criptográfica RS256 contra las JWKS oficiales de Microsoft, extrae los claims del colaborador, inicializa la sesión en base de datos (`zd_security.session_registry`) y registra el evento de auditoría `AUTH_LOGIN_SUCCESS`.
-* **Payload:** `{ "idToken": "eyJhbGciOiJSUzI1NiIsIn..." }`
-* **Respuesta Exitosa (200 OK):** Token de sesión JWT propio de ZDeptos con identificador único de sesión (`jti`), tiempo de expiración y perfil básico del usuario.
-
-#### `POST /api/v1/auth/session/keep-alive`
-* **Feature / Historia:** Feature 01 | `HU-02` (`HU-002`)
-* **Propósito:** Ventana deslizante de inactividad (30 minutos). Permite al frontend renovar la vigencia del token activo mientras el usuario realiza actividades en la plataforma, evitando cierres de sesión intempestivos durante la edición de estructuras o captura de roles.
-* **Respuesta Exitosa (200 OK):** `{ "refreshed": true, "expiresInSeconds": 1800 }`.
-
-#### `GET /api/v1/auth/session/status`
-* **Feature / Historia:** Feature 01 | `HU-02`, `HU-06` (`HU-003`)
-* **Propósito:** Verificación de vigencia y sincronización multi-pestaña. Valida si el `jti` de la sesión actual ha sido revocado en lista negra (`zd_security.revoked_token`) debido a un logout realizado en otra pestaña del navegador o por un administrador.
-* **Respuesta Exitosa (200 OK):** `{ "active": true, "sessionAgeSeconds": 450 }`.
-
-#### `POST /api/v1/auth/logout`
-* **Feature / Historia:** Feature 01 | `HU-03`, `HU-04`, `HU-06` (`HU-003`)
-* **Propósito:** Cierre explícito de sesión. Agrega el `jti` del token a la tabla inmutable de lista negra con TTL, marca la sesión como cerrada e inserta el registro `AUTH_LOGOUT` en `zd_audit.audit_event`.
-* **Respuesta Exitosa (200 OK):** `{ "message": "Sesión finalizada exitosamente." }`.
+* `POST /api/v1/auth/sso/callback` — `AuthController_ssoCallback`
+  * **Descripción:** Intercambio y validación de token SSO Corporativo Entra ID (HU-01 / HU-001 / CU-SEC-001). Valida firma RS256/JWKS y emite token de sesión con auditoría.
+* `POST /api/v1/auth/session/keep-alive` — `AuthController_keepAlive`
+  * **Descripción:** Renovar sesión activa y validar límite de inactividad (HU-02 / HU-002 / CU-SEC-001 FA-04). Extiende la ventana de 30 minutos.
+* `POST /api/v1/auth/logout` — `AuthController_logout`
+  * **Descripción:** Cierre de sesión seguro, destrucción de contexto e invalidación multi-pestaña (HU-03, HU-04, HU-06 / CU-SEC-007). Agrega `jti` a lista negra inmutable.
+* `GET /api/v1/auth/session` — `AuthController_getSession`
+  * **Descripción:** Consultar estado de sesión activa y sincronización multi-pestaña (HU-02, HU-06 / CU-SEC-007 FA-02).
 
 ---
 
-### 2. Feature 01 — Inicio, Perfil y Buscador Global Predictivo
+### [Feature Home & Search: Identidad, Módulos por Rol y Buscador Global (HU-07 a HU-12)]
+*Experiencia de bienvenida, tarjetas dinámicas de módulos y motor de búsqueda con SearchScopeEnforcer.*
 
-#### `GET /api/v1/me/profile`
-* **Feature / Historia:** Feature 01 | `HU-07` (`HU-004`)
-* **Propósito:** Obtiene el perfil de bienvenida personalizado (`"Hola, [Nombre]"`), las iniciales para el avatar, la lista de roles activos, excepciones vigentes y el resumen de tramo de control organizacional asignado.
-* **Respuesta Exitosa (200 OK):** Objeto con `userId`, `greeting`, `avatarInitials`, `roles`, `activeExceptions` y `effectiveScope`.
-
-#### `GET /api/v1/me/modules`
-* **Feature / Historia:** Feature 01 | `HU-08` (`HU-005`)
-* **Propósito:** Retorna las tarjetas de módulos del sistema (`Estructuras`, `Roles y Permisos`, `Reportes`, `Auditoría`), indicando para cada una si está habilitada (`enabled: true/false`), la ruta en el frontend y el motivo de deshabilitación si carece de permisos.
-* **Respuesta Exitosa (200 OK):** Arreglo de módulos con permisos requeridos y estado habilitado.
-
-#### `GET /api/v1/search`
-* **Feature / Historia:** Feature 01 | `HU-09` a `HU-12` (`HU-006` / `RN-006`)
-* **Propósito:** Búsqueda predictiva global unificada (departamentos, colaboradores y secciones). Aplica obligatoriamente el servicio `SearchScopeEnforcer` para asegurar que el usuario jamás visualice nodos fuera de su tramo de control (`ZONE`, `STORE`, `DEPT`, `GROUP`) y retorna fragmentos de texto resaltados con etiquetas `<mark>`.
-* **Query Params:** `query` (mínimo 2 caracteres), `limit`.
-
-#### `GET /api/v1/search/departments`
-* **Feature / Historia:** Feature 01 | `HU-09`, `HU-12` (`HU-006`)
-* **Propósito:** Búsqueda específica de departamentos y grupos comerciales dentro del alcance del usuario, con rutas de navegación listas para el frontend.
-
-#### `GET /api/v1/search/collaborators`
-* **Feature / Historia:** Feature 01 | `HU-10`, `HU-12` (`HU-006`)
-* **Propósito:** Búsqueda predictiva de colaboradores por nombre, puesto o número de empleado (`EMP-XXXX`), verificando pertenencia al tramo de control.
-
-#### `GET /api/v1/search/sections`
-* **Feature / Historia:** Feature 01 | `HU-11`, `HU-12` (`HU-006`)
-* **Propósito:** Búsqueda de secciones de catálogo (asignadas y disponibles), indicando código SAP, nombre, estatus de ancla (`isAnchor: true/false`) y departamento asignado.
+* `GET /api/v1/users/me/profile` — `HomeSearchController_getMyProfile`
+  * **Descripción:** Obtener identidad de bienvenida personalizada y contexto de sesión (HU-07 / HU-004 / CU-HOM-001). Retorna saludo `"Hola, [Nombre]"`, iniciales, roles y excepciones vigentes.
+* `GET /api/v1/users/me/modules` — `HomeSearchController_getMyModules`
+  * **Descripción:** Obtener módulos y acciones habilitados según permisos efectivos del usuario (HU-08 / HU-005 / CU-HOM-002).
+* `GET /api/v1/search/departments` — `HomeSearchController_searchDepartments`
+  * **Descripción:** Búsqueda global de Departamentos Comerciales y Grupos en el alcance del usuario (HU-09, HU-12 / HU-006 / CU-HOM-003).
+* `GET /api/v1/search/employees` — `HomeSearchController_searchEmployees`
+  * **Descripción:** Búsqueda global de Colaboradores por nombre o ID de empleado en el alcance (HU-10, HU-12 / HU-006 / CU-HOM-003).
+* `GET /api/v1/search/sections` — `HomeSearchController_searchSections`
+  * **Descripción:** Búsqueda global de Secciones Comerciales por código o nombre en el alcance (HU-11, HU-12 / HU-006 / CU-HOM-003).
+* `GET /api/v1/search` — `HomeSearchController_searchGlobal`
+  * **Descripción:** Búsqueda global unificada de estructura comercial acotada al alcance (HU-09 a HU-12 / HU-006 / CU-HOM-003) con resaltado `<mark>`.
 
 ---
 
-### 3. Feature 01 — Roles, Permisos, Asignaciones y Excepciones
+### [Feature 01: Gestión de Roles y Permisos (HU-54 a HU-61)]
+*Creación, edición con concurrencia optimista, clonación, matriz de impacto y baja lógica de roles.*
 
-#### `GET /api/v1/roles`
-* **Feature / Historia:** Feature 01 | `HU-54` (`HU-007`)
-* **Propósito:** Consulta paginada o lista completa del catálogo de roles del sistema, con soporte de filtros por texto (`search`), estado (`status: ACTIVE, INACTIVE, DELETED`) y ordenamiento multi-columna.
-* **Respuesta (200 OK):** `{ items: RoleDto[], total: number, page: number, limit: number }`.
-
-#### `POST /api/v1/roles`
-* **Feature / Historia:** Feature 01 | `HU-54` (`HU-008`)
-* **Propósito:** Creación de un nuevo rol con matriz de permisos transaccional. Valida unicidad del nombre (`409 ROLE_NAME_ALREADY_EXISTS`) y existencia de códigos de permiso en el catálogo.
-
-#### `GET /api/v1/roles/:roleId`
-* **Feature / Historia:** Feature 01 | `HU-54` (`HU-007`)
-* **Propósito:** Obtiene el detalle completo del rol especificado, incluyendo su versión actual, estado, atributos de segmentación y todos los permisos asignados.
-
-#### `PUT /api/v1/roles/:roleId`
-* **Feature / Historia:** Feature 01 | `HU-56` (`HU-011`)
-* **Propósito:** Edición de rol con control estricto de concurrencia optimista (`id + version`). Si otro administrador modificó el rol previamente, rechaza con código HTTP `409 Conflict` (`ROLE_VERSION_CONFLICT`), previniendo sobreescrituras silenciosas.
-
-#### `DELETE /api/v1/roles/:roleId`
-* **Feature / Historia:** Feature 01 | `HU-57` (`HU-012`)
-* **Propósito:** Baja lógica de un rol (`status = DELETED`). Bloquea con `409 PROTECTED_ROLE` si el rol es protegido (sistema), y revoca automáticamente las asignaciones activas asociadas.
-
-#### `GET /api/v1/roles/:roleId/impact`
-* **Feature / Historia:** Feature 01 | `HU-57` (`HU-012`)
-* **Propósito:** Análisis de impacto previo a la modificación o eliminación de un rol. Retorna la cantidad exacta de colaboradores activos afectados (`affectedUsersCount`) y los módulos impactados.
-
-#### `POST /api/v1/roles/:roleId/clone`
-* **Feature / Historia:** Feature 01 | `HU-009`
-* **Propósito:** Clona un rol existente duplicando su matriz de permisos y reglas de segmentación hacia un nuevo código y nombre, facilitando la creación de roles derivados.
-
-#### `PUT /api/v1/roles/:roleId/segmentation`
-* **Feature / Historia:** Feature 01 | `HU-55` (`HU-010`)
-* **Propósito:** Configura los atributos de segmentación automática del rol (Ubicaciones `locationCodes`, Departamentos `departmentCodes`, Puestos `jobFunctionCodes`) para el Paso 2 del formulario de roles en el frontend.
-
-#### `POST /api/v1/roles/seed-test-profiles`
-* **Feature / Historia:** Feature 01 | `HU-069`
-* **Propósito:** Semilla idempotente que inicializa en base de datos los 12 roles base oficiales de Liverpool y Suburbia (Administrador, Gestor de Estructura, Director Comercial, Gerente de Tienda, Jefe de Departamento, etc.).
-
-#### `GET /api/v1/permissions`
-* **Feature / Historia:** Feature 01 | `HU-54`
-* **Propósito:** Catálogo plano de los 54 permisos granulares del sistema ZDeptos con clave, descripción y módulo asociado.
-
-#### `GET /api/v1/permissions/grouped`
-* **Feature / Historia:** Feature 01 | `HU-54`
-* **Propósito:** Catálogo de permisos agrupados por categoría funcional (`Estructura`, `Seguridad`, `Reportes`, `Auditoría`), listo para renderizar la matriz de permisos (`PermissionMatrix.tsx`) en el frontend.
-
-#### `GET /api/v1/access-scopes`
-* **Feature / Historia:** Feature 01 | `HU-58` (`HU-013`)
-* **Propósito:** Catálogo de alcances operacionales (`GLOBAL`, `ZONE`, `STORE`, `DEPARTMENT`, `COMMERCIAL_GROUP`) para asignaciones de roles.
-
-#### `POST /api/v1/role-assignments`
-* **Feature / Historia:** Feature 01 | `HU-58` (`HU-014` a `HU-016`)
-* **Propósito:** Asigna un rol a un colaborador vinculándolo a uno o varios alcances operacionales específicos, delimitando las tiendas o departamentos que podrá consultar o gestionar.
-
-#### `POST /api/v1/role-exceptions`
-* **Feature / Historia:** Feature 01 | `HU-59`, `HU-60` (`HU-017`)
-* **Propósito:** Otorga permisos aditivos temporales por excepción individual a un colaborador, con fecha de expiración obligatoria (`expiresAt`) y motivo justificado.
-
-#### `POST /api/v1/role-exceptions/bulk`
-* **Feature / Historia:** Feature 01 | `HU-017`
-* **Propósito:** Asignación o revocación masiva de excepciones de permisos a múltiples colaboradores en una sola transacción ACID.
-
-#### `GET /api/v1/users/:personId/effective-permissions`
-* **Feature / Historia:** Feature 01 | `HU-61` (`HU-018`)
-* **Propósito:** Calcula y retorna la unión aditiva real de permisos del usuario (`Permisos de Roles Base ∪ Excepciones Vigentes`), garantizando el principio de gobernanza sin reglas `DENY`.
+* `GET /api/v1/roles` — `RolesController_search`
+  * **Descripción:** Consulta paginada o simple del catálogo de roles con filtros por texto y estado (`ACTIVE`, `INACTIVE`, `DELETED`).
+* `POST /api/v1/roles` — `RolesController_create`
+  * **Descripción:** Creación transaccional de un nuevo rol con matriz de permisos y validación de unicidad de nombre (409 Conflict).
+* `GET /api/v1/roles/test-profiles/catalog` — `RolesController_getTestProfilesCatalog`
+  * **Descripción:** Consultar catálogo de los 12 perfiles estándar de pruebas funcionales (HU-069 / DEC-07, DEC-08, DEC-09).
+* `POST /api/v1/roles/seed-test-profiles` — `RolesController_seedTestProfiles`
+  * **Descripción:** Preparar e inicializar perfiles representativos para pruebas funcionales (HU-069).
+* `POST /api/v1/roles/{roleId}/clone` — `RolesController_clone`
+  * **Descripción:** Crear un nuevo rol reutilizando la configuración de un rol existente (HU-009 / CU-SEC-002 FA-03).
+* `GET /api/v1/roles/{roleId}/segmentation` — `RolesController_getSegmentation`
+  * **Descripción:** Consultar reglas de segmentación y alcance operativo de un rol (HU-55 / HU-010).
+* `PUT /api/v1/roles/{roleId}/segmentation` — `RolesController_updateSegmentation`
+  * **Descripción:** Configurar reglas de segmentación organizacional y alcance de un rol (HU-55 / HU-010 / RN-054).
+* `GET /api/v1/roles/{roleId}/impact` — `RolesController_impact`
+  * **Descripción:** Análisis de impacto de usuarios activos afectados (`affectedUsersCount`) antes de modificar o eliminar un rol.
+* `GET /api/v1/roles/{roleId}` — `RolesController_get`
+  * **Descripción:** Detalle completo de un rol, versión y permisos asociados.
+* `PUT /api/v1/roles/{roleId}` — `RolesController_update`
+  * **Descripción:** Edición con control de concurrencia optimista (`id + version` -> 409 `ROLE_VERSION_CONFLICT`).
+* `DELETE /api/v1/roles/{roleId}` — `RolesController_delete`
+  * **Descripción:** Baja lógica del rol bloqueando si es un rol protegido del sistema (409).
+* `GET /api/v1/permissions` — `PermissionsController_list`
+  * **Descripción:** Catálogo plano de los 54 permisos granulares del sistema.
+* `GET /api/v1/permissions/grouped` — `PermissionsController_grouped`
+  * **Descripción:** Catálogo de permisos agrupados por categoría funcional para la matriz de permisos.
 
 ---
 
-### 4. Feature 02 — Geografía y Estructuras Comerciales (Operaciones / Tiendas)
+### [Feature 01: Asignaciones de Roles y Alcance Operativo (HU-58 a HU-61)]
+*Asignaciones de roles con segmentación geográfica (tiendas/zonas) y excepciones.*
 
-#### `GET /api/v1/geography/zones`
-* **Feature / Historia:** Feature 02 | `HU-13`, `HU-14` (`HU-024`)
-* **Propósito:** Lista las zonas geográficas operativas (ej. `Zona 1 Centro`, `Zona 2 Norte`, `Zona 3 Occidente`) para los filtros en cascada de la pantalla de Operaciones.
-
-#### `GET /api/v1/geography/zones/:zoneId/locations`
-* **Feature / Historia:** Feature 02 | `HU-13`, `HU-15` (`HU-024`)
-* **Propósito:** Lista los almacenes/tiendas correspondientes a la zona seleccionada, clasificadas por formato comercial (`LIVERPOOL` o `SUBURBIA`).
-
-#### `GET /api/v1/structures/locations/:locationId/summary`
-* **Feature / Historia:** Feature 02 | `HU-22` (`HU-025`)
-* **Propósito:** Encabezado con totales consolidados de la tienda seleccionada: nombre oficial, formato, dirección, total de gerencias, total de departamentos comerciales y grupos activos.
-
-#### `GET /api/v1/structures/tree`
-* **Feature / Historia:** Feature 02 | `HU-16` a `HU-27`, `HU-50` (`HU-026` a `HU-030`, `HU-048`)
-* **Propósito:** Árbol jerárquico completo de 6 niveles (`Tienda -> Subdirección -> Gerencia -> Departamento -> Grupo -> Secciones/Colaboradores`). Incluye soporte para mancuernas (0..2 líderes titulares), detección de vacantes y bandera `isReadOnly: true` si se consulta un mes histórico o cerrado.
-* **Query Params:** `locationId` (obligatorio), `period` (`YYYY-MM`).
-
-#### `GET /api/v1/structures/departments/:departmentId/groups`
-* **Feature / Historia:** Feature 02 | `HU-28`, `HU-31` (`HU-031`)
-* **Propósito:** Lista los grupos comerciales (`Grupo 001`, `Grupo 002`, etc.) administrados dentro del departamento comercial para alimentar la columna izquierda de `DepartmentGroupsPage.tsx`.
-
-#### `POST /api/v1/structures/departments/:departmentId/groups`
-* **Feature / Historia:** Feature 02 | `HU-28` a `HU-30` (`HU-031`, `HU-032`)
-* **Propósito:** Creación de un nuevo grupo comercial en el departamento. Aplica autonumeración atómica concurrente (`SELECT FOR UPDATE` con formato `Grupo 00X` según regla `P-02`) y valida que no exista un grupo activo con el mismo nombre (`409 Conflict`).
-
-#### `PUT /api/v1/structures/groups/:groupId`
-* **Feature / Historia:** Feature 02 | `HU-32` (`HU-033`)
-* **Propósito:** Renombra un grupo comercial existente verificando la unicidad del nombre dentro del departamento.
-
-#### `DELETE /api/v1/structures/groups/:groupId`
-* **Feature / Historia:** Feature 02 | `HU-33`, `HU-34` (`HU-034`)
-* **Propósito:** Baja lógica de un grupo comercial. Bloquea la operación (`400` / `409`) si es el único grupo del departamento, si contiene secciones ancla activas o colaboradores asignados.
-
-#### `GET /api/v1/structures/departments/:departmentId/available-sections`
-* **Feature / Historia:** Feature 02 | `HU-36` (`HU-035`)
-* **Propósito:** Catálogo de secciones disponibles no asignadas pertenecientes al departamento, filtradas según el formato de la tienda (Liverpool o Suburbia) para la columna derecha de drag & drop.
-
-#### `POST /api/v1/structures/groups/:groupId/sections`
-* **Feature / Historia:** Feature 02 | `HU-37` (`HU-036`)
-* **Propósito:** Asigna una sección del catálogo disponible a un grupo comercial del departamento, garantizando unicidad (una sección no puede pertenecer a dos grupos en la misma tienda).
-
-#### `DELETE /api/v1/structures/groups/:groupId/sections/:sectionId`
-* **Feature / Historia:** Feature 02 | `HU-38`, `HU-39` (`HU-037`, `HU-038`)
-* **Propósito:** Desasigna una sección de un grupo comercial devolviéndola al catálogo disponible. **Protección Crítica:** Si la sección es una **Sección Ancla (`isAnchor: true`)**, el sistema bloquea con código HTTP `422 Unprocessable Entity` (`ANCHOR_SECTION_IMMUTABLE`).
-
-#### `PATCH /api/v1/structures/departments/:departmentId/sections/move`
-* **Feature / Historia:** Feature 02 | `HU-35`, `HU-39`, `HU-47` (`HU-039`, `HU-042`)
-* **Propósito:** Operación de **Drag & Drop** para reasignar una sección entre grupos dentro del mismo departamento, con validación de cabecera de control de concurrencia `If-Match`.
-
-#### `GET /api/v1/structures/departments/:departmentId/aggregated-sections`
-* **Feature / Historia:** Feature 02 | `HU-40` (`HU-040`)
-* **Propósito:** Cálculo y consolidación sumatoria ascendente de secciones desde los grupos comerciales hacia el departamento, gerencia y tienda.
-
-#### `GET /api/v1/structures/calendar/operational-cutoff`
-* **Feature / Historia:** Feature 02 | `HU-50`, `HU-51` (`HU-048`)
-* **Propósito:** Consulta el calendario operativo de corte mensual (`zd_plan.operational_cutoff_calendar`). Informa si el periodo se encuentra dentro de la ventana de edición permitida o si ha entrado en bloqueo operativo.
-
-#### `POST /api/v1/structures/departments/:departmentId/publish`
-* **Feature / Historia:** Feature 02 | `HU-42` a `HU-48`, `HU-52`, `HU-53` (`HU-041` a `HU-043`)
-* **Propósito:** Publicación atómica de la estructura del departamento. Valida que no existan secciones ancla huérfanas (`422`), verifica la versión contra `If-Match` (`412 Precondition Failed` si otro usuario publicó simultáneamente) y persiste el evento en auditoría.
+* `GET /api/v1/users` — `AccessManagementController_users`
+  * **Descripción:** Lista colaboradores del sistema con sus roles y asignaciones activas.
+* `GET /api/v1/users/{userId}` — `AccessManagementController_user`
+  * **Descripción:** Detalle de un usuario y sus asignaciones operativas.
+* `GET /api/v1/users/{userId}/effective-permissions` — `AccessManagementController_effectivePermissions`
+  * **Descripción:** Calcular fusión aditiva y acumulativa de permisos y alcances vigentes de un colaborador (HU-61 / HU-018 / DEC-12).
+* `GET /api/v1/users/{userId}/role-assignments` — `AccessManagementController_userAssignments`
+  * **Descripción:** Roles y alcances asignados actualmente al colaborador.
+* `GET /api/v1/users/{userId}/role-exceptions` — `AccessManagementController_userExceptions`
+  * **Descripción:** Excepciones individuales vigentes otorgadas al usuario.
+* `GET /api/v1/access-scopes` — `AccessManagementController_scopes`
+  * **Descripción:** Catálogo de alcances operacionales (`GLOBAL`, `ZONE`, `STORE`, `DEPARTMENT`, `COMMERCIAL_GROUP`).
+* `GET /api/v1/role-assignments` — `AccessManagementController_assignments`
+  * **Descripción:** Listado general de asignaciones de roles.
+* `POST /api/v1/role-assignments` — `AccessManagementController_createAssignment`
+  * **Descripción:** Asignación de rol a usuario con alcances organizacionales.
+* `GET /api/v1/role-assignments/{assignmentId}` — `AccessManagementController_assignment`
+  * **Descripción:** Detalle de una asignación específica.
+* `PUT /api/v1/role-assignments/{assignmentId}` — `AccessManagementController_updateAssignment`
+  * **Descripción:** Modificar alcances o estatus de una asignación.
+* `POST /api/v1/role-assignments/{assignmentId}/revoke` — `AccessManagementController_revokeAssignment`
+  * **Descripción:** Revocación explícita de una asignación de rol.
+* `POST /api/v1/role-assignments/impact` — `AccessManagementController_assignmentImpact`
+  * **Descripción:** Evaluar impacto de una asignación en los permisos del usuario.
+* `GET /api/v1/role-exceptions` — `AccessManagementController_exceptions`
+  * **Descripción:** Consulta de excepciones de permisos registradas.
+* `POST /api/v1/role-exceptions` — `AccessManagementController_createException`
+  * **Descripción:** Asignación de excepción de permisos temporal con fecha de expiración obligatoria.
+* `POST /api/v1/role-exceptions/bulk` — `AccessManagementController_bulkCreateExceptions`
+  * **Descripción:** Asignar el mismo rol excepcional con vigencia a varios colaboradores en lote (HU-017 / CU-SEC-006 FA-05 / PROP-03).
+* `GET /api/v1/role-exceptions/{exceptionId}` — `AccessManagementController_exception`
+  * **Descripción:** Detalle de una excepción individual.
+* `PUT /api/v1/role-exceptions/{exceptionId}` — `AccessManagementController_updateException`
+  * **Descripción:** Actualizar vigencia o motivo de una excepción.
+* `POST /api/v1/role-exceptions/{exceptionId}/revoke` — `AccessManagementController_revokeException`
+  * **Descripción:** Revocar inmediatamente una excepción activa.
+* `POST /api/v1/role-exceptions/impact` — `AccessManagementController_exceptionImpact`
+  * **Descripción:** Evaluar el impacto de una excepción en los permisos del usuario.
 
 ---
 
-### 5. Feature 02-B — Estructuras Corporativas (Compras / PAC), Suburbia y Employee Central
+### [Feature 02: Geografía Comercial y Filtros en Cascada (UC-004 / HU-13)]
+*Catálogos de zonas comerciales y tiendas para filtros de selección.*
 
-#### `GET /api/v1/structures/config/base-departments`
-* **Feature / Historia:** Feature 02-B | `HU-020` (`DEC-15`)
-* **Propósito:** Consulta los departamentos raíz base configurados dinámicamente para las estructuras corporativas de `COMPRAS` o `PAC`.
-
-#### `PUT /api/v1/structures/config/base-departments`
-* **Feature / Historia:** Feature 02-B | `HU-020` (`DEC-15`)
-* **Propósito:** Actualiza la lista de departamentos base corporativos sin necesidad de modificar código fuente o desplegar el backend.
-
-#### `GET /api/v1/structures/compras-pac/tree`
-* **Feature / Historia:** Feature 02-B | `HU-021`, `HU-022`, `HU-023`
-* **Propósito:** Árbol jerárquico corporativo con dos variantes de negocio clave:
-  * Si `domain=COMPRAS`: Navegación sin nivel de grupos (`Dirección -> Gerencia -> Departamento -> Sección`, regla `DEC-01`).
-  * Si `domain=PAC`: Navegación de la estructura PAC con exclusión automática de colaboradores con funciones no comerciales (`HU-023`).
-
-#### `GET /api/v1/structures/locations/:locationId/suburbia-advisors`
-* **Feature / Historia:** Feature 02-B | `HU-19` (`HU-028`)
-* **Propósito:** En tiendas de formato Suburbia, agrupa automáticamente a los colaboradores con puesto de Asesor (`jobCode = 70051507`) bajo el nodo intermedio **"Asesores Suburbia"** (`DEC-16`).
-
-#### `GET /api/v1/structures/collaborators/:personId/managed-sections`
-* **Feature / Historia:** Feature 02-B | `HU-41` (`HU-029`)
-* **Propósito:** Consulta la lista de secciones comerciales asignadas o gestionadas directamente por un colaborador específico.
-
-#### `PUT /api/v1/structures/collaborators/:personId/managed-sections`
-* **Feature / Historia:** Feature 02-B | `HU-41` (`HU-029`)
-* **Propósito:** Actualiza las secciones gestionadas directamente por un colaborador en estructuras corporativas.
-
-#### `POST /api/v1/structures/integrations/ec/events`
-* **Feature / Historia:** Feature 02-B | `HU-44` (`HU-045`)
-* **Propósito:** Webhook / API entrante para eventos de SAP SuccessFactors Employee Central (altas, bajas, transferencias y cambios de puesto) para mantener actualizados los puestos y titulares en ZDeptos.
-
-#### `POST /api/v1/structures/integrations/ec/sync-managed-sections`
-* **Feature / Historia:** Feature 02-B | `HU-45` (`HU-044`)
-* **Propósito:** Encola en la tabla Outbox `P-01` la sincronización de secciones gestionadas para ser notificadas a Employee Central.
-
-#### `GET /api/v1/structures/integrations/ec/outbox`
-* **Feature / Historia:** Feature 02-B | `HU-45` (`HU-044`)
-* **Propósito:** Monitoreo y consulta de eventos salientes hacia Employee Central (`PENDING`, `SENT`, `FAILED`).
-
-#### `POST /api/v1/structures/integrations/ec/outbox/:outboxId/ack`
-* **Feature / Historia:** Feature 02-B | `HU-45` (`HU-044`)
-* **Propósito:** Confirmación (ACK) de recepción exitosa de un evento de integración por parte de SAP SuccessFactors.
+* `GET /api/v1/geography/zones` — `GeographyController_getZones`
+  * **Descripción:** Listar Zonas Comerciales (UC-004 / HU-13).
+* `GET /api/v1/geography/zones/{zoneId}/locations` — `GeographyController_getLocations`
+  * **Descripción:** Listar Tiendas (Locations) por Zona (UC-004 / HU-13) clasificadas por formato Liverpool / Suburbia.
 
 ---
 
-### 6. Feature 02-C — Planeación, Ciclo de Vida y Cambios Programados
+### [Feature 02: Estructura Comercial, Árbol y Grupos P-02 (CU-EST-001, CU-ADM-001..008 / HU-14..53)]
+*Consulta de árbol jerárquico recursivo, gestión de grupos operativos y Drag & Drop de secciones.*
 
-#### `POST /api/v1/structures/future-draft/init`
-* **Feature / Historia:** Feature 02-C | `HU-48 / HU-49` (`HU-047`)
-* **Propósito:** Inicialización mediante técnica *Copy-on-Write* de la estructura del mes siguiente (`mes + 1`). Clona la estructura vigente para que los planificadores puedan trabajar en cambios a futuro sin impactar la operación diaria en curso.
-
-#### `GET /api/v1/structures/scheduled-changes`
-* **Feature / Historia:** Feature 02-C | `HU-049`, `HU-050`
-* **Propósito:** Consulta los cambios estructurales programados para entrar en vigor en un periodo futuro (`PENDING`, `APPLIED`, `CANCELLED`).
-
-#### `POST /api/v1/structures/scheduled-changes`
-* **Feature / Historia:** Feature 02-C | `HU-48 / HU-49` (`HU-047`)
-* **Propósito:** Registra un cambio programado (creación de grupo, reasignación de sección, nuevo líder) con vigencia programada para el inicio del siguiente periodo mensual.
-
-#### `PUT /api/v1/structures/scheduled-changes/:changeId`
-* **Feature / Historia:** Feature 02-C | `HU-049`
-* **Propósito:** Edita los datos o vigencia de un cambio programado mientras su estatus permanezca en `PENDING` (antes de que entre en vigor).
-
-#### `POST /api/v1/structures/scheduled-changes/:changeId/cancel`
-* **Feature / Historia:** Feature 02-C | `HU-050`
-* **Propósito:** Cancela formalmente un cambio programado (`PENDING -> CANCELLED`) antes de su fecha de activación, registrando la cancelación en la bitácora de auditoría.
-
-#### `POST /api/v1/structures/periods/:periodCode/activate`
-* **Feature / Historia:** Feature 02-C | `HU-051`
-* **Propósito:** Proceso mensual de activación de periodo. Archiva el periodo vigente en una fotografía histórica inmutable (`zd_reporting.structure_snapshot`, marcándolo `isReadOnly: true`) y activa todos los cambios programados del nuevo periodo.
-
-#### `PUT /api/v1/structures/calendar/operational-cutoff`
-* **Feature / Historia:** Feature 02-C | `HU-052`
-* **Propósito:** Configuración de la ventana de corte operativo (`windowStartUtc` y `cutoffAtUtc`) para controlar las fechas en que las tiendas pueden registrar cambios cada mes.
-
----
-
-### 7. Feature 03 — Reportes Dinámicos, Modelos de Compensación y Exportaciones (CU-EST-002, CU-EST-003)
-
-#### `GET /api/v1/reports/metadata/columns`
-* **Feature / Historia:** Feature 03 | `HU-62` (`HU-057` / `CU-EST-002`)
-* **Propósito:** Retorna el catálogo oficial de columnas seleccionables organizadas en las 3 categorías funcionales (`estructura`, `puestosPersonas` y `relaciones`). Excluye automáticamente las columnas sensibles (`sensitive: true`, ej. `employeeId`) si el usuario carece del permiso `REPORTS_SENSITIVE_VIEW`.
-
-#### `GET /api/v1/reports/metadata/filter-options`
-* **Feature / Historia:** Feature 03 | `CU-EST-002` (Regla "Opciones acotadas" y `FA-01`)
-* **Propósito:** Devuelve exclusivamente los valores autorizados para los selectores de pantalla (Ubicación, Gerencia, Departamento, Grupo, Sección, Puesto, Función y Centro) según el tramo de control del usuario, e informa si se autoseleccionó una única ubicación autorizada (`autoSelectedSingleLocation: true`, `FA-01`).
-
-#### `GET /api/v1/reports/role-based`
-* **Feature / Historia:** Feature 03 | `HU-63`, `HU-64` (`HU-055`, `HU-058` / `CU-EST-002`)
-* **Propósito:** Genera la vista previa paginada del reporte por rol. Aplica la intersección estricta de filtros (fechas, alcance, permisos y columnas seleccionadas), autoselección de única ubicación (`FA-01`), recorte de datos parciales por alcance (`FA-05`), rechazo de fechas invertidas (`400`, `FE-02`), rechazo de nodos fuera de alcance (`403`, `CA-09`), bloqueo si no selecciona ningún dato (`400`, `CA-10`) y consulta de fotografías históricas de hasta 5 años sin sustitución silenciosa (`FE-05`). Si no hay datos, retorna el mensaje oficial: `"No se encontraron datos para los filtros seleccionados."` (`FE-03`).
-
-#### `GET /api/v1/reports/general`
-* **Feature / Historia:** Feature 03 | `HU-65` (`HU-056` / `CU-EST-003`)
-* **Propósito:** Consulta consolidada sobre todo el universo organizacional autorizado. Exige de forma estricta el permiso `REPORTS_GLOBAL_VIEW` (`403 Forbidden` si carece de él).
-
-#### `GET /api/v1/reports/compensations`
-* **Feature / Historia:** Feature 03 | `HU-67` (`HU-061` a `HU-063`)
-* **Propósito:** Genera reportes especializados para interfaces de nómina, productividad y comisiones según las 6 variantes oficiales de Liverpool:
-  1. `JEFES_CON_SECCION`
-  2. `GERENTES`
-  3. `JEFES`
-  4. `PRODUCTIVIDAD_10_COL`
-  5. `PRODUCTIVIDAD_FILA`
-  6. `OPERACIONES_ZDEPTOS`
-
-#### `GET /api/v1/reports/export/csv`
-* **Feature / Historia:** Feature 03 | `HU-66` (`HU-058` / `DEC-10` / `CU-EST-002`)
-* **Propósito:** Descarga el reporte en formato CSV delimitado por comas (`text/csv; charset=utf-8` con BOM UTF-8 para compatibilidad directa con Microsoft Excel). Preserva ceros a la izquierda para códigos SAP (`="00123"`), garantiza consistencia total con los filtros de la vista previa y registra la descarga en auditoría. Exige permiso `REPORTS_EXPORT` o `REPORTS_DOWNLOAD_CSV` (`CA-08`).
-
-#### `GET /api/v1/reports/export/txt`
-* **Feature / Historia:** Feature 03 | `HU-66` (`HU-059` / `DEC-10` / `CU-EST-002`)
-* **Propósito:** Descarga el reporte en archivo plano delimitado por barras verticales (`|`) compatible con interfaces legadas de SAP HCM y nómina. Registra la exportación en la bitácora inmutable de auditoría.
+* `GET /api/v1/structures/tree` — `StructuresController_getTree`
+  * **Descripción:** Visualizar Árbol Jerárquico Comercial Completo (CU-EST-001 / HU-14 a HU-20) con 6 niveles, mancuernas (0..2 líderes), vacantes y bandera `isReadOnly` para meses cerrados.
+* `GET /api/v1/structures/locations/{locationId}/summary` — `StructuresController_getLocationSummary`
+  * **Descripción:** Visualizar Resumen y Encabezado de Tienda (HU-15 / CU-ADM-001).
+* `GET /api/v1/structures/departments/{departmentId}/groups` — `StructuresController_getDepartmentGroups`
+  * **Descripción:** Consultar Grupos Comerciales de un Departamento (HU-20 / CU-ADM-001).
+* `POST /api/v1/structures/departments/{departmentId}/groups` — `StructuresController_createGroup`
+  * **Descripción:** Crear Grupo Comercial Operativo (CU-ADM-002 / P-02 / HU-21, HU-22) con autonumeración atómica concurrente `SELECT FOR UPDATE` y unicidad de nombre (409).
+* `GET /api/v1/structures/departments/{departmentId}/aggregated-sections` — `StructuresController_getAggregatedSections`
+  * **Descripción:** Consultar Secciones Agregadas del Departamento (ERF 4.1 / CU-EST-001).
+* `GET /api/v1/structures/departments/{departmentId}/available-sections` — `StructuresController_getAvailableSections`
+  * **Descripción:** Consultar Catálogo de Secciones Disponibles (HU-27, HU-28 / CU-ADM-004) por formato de tienda.
+* `PUT /api/v1/structures/groups/{groupId}` — `StructuresController_updateGroupName`
+  * **Descripción:** Renombrar Grupo Comercial (CU-ADM-002 / HU-23).
+* `DELETE /api/v1/structures/groups/{groupId}` — `StructuresController_deleteGroup`
+  * **Descripción:** Inactivar / Eliminar Grupo Comercial Elegible (CU-ADM-003 / HU-24, HU-25, HU-26) bloqueando si es único o contiene anclas/colaboradores.
+* `PATCH /api/v1/structures/departments/{departmentId}/sections/move` — `StructuresController_moveSection`
+  * **Descripción:** Reubicar Sección Virtual entre Grupos / Drag & Drop (CU-ADM-004 / HU-32 a HU-37) con control de concurrencia `If-Match`.
+* `POST /api/v1/structures/groups/{groupId}/sections` — `StructuresController_assignSection`
+  * **Descripción:** Asignar Sección Disponible a Grupo Comercial (HU-29, HU-30 / CU-ADM-004) con unicidad por tienda.
+* `DELETE /api/v1/structures/groups/{groupId}/sections/{sectionId}` — `StructuresController_unassignSection`
+  * **Descripción:** Desasignar Sección de Grupo Comercial (HU-34, HU-37 / CU-ADM-004). Bloquea con 422 si es Sección Ancla 🔒.
+* `GET /api/v1/structures/calendar/operational-cutoff` — `StructuresController_getOperationalCutoff`
+  * **Descripción:** Consultar Corte Operativo y Calendario de Planificación (HU-52 / CU-ADM-005).
+* `POST /api/v1/structures/departments/{departmentId}/publish` — `StructuresController_publishDepartment`
+  * **Descripción:** Publicar y Confirmar Estructura Departamental (HU-48 / CU-ADM-005) con validación de anclas huérfanas (422) e `If-Match` (412).
 
 ---
 
-### 8. Feature 03-B — Historial y Auditoría Inmutable (ERF §7)
+### [Estructuras Compras, PAC, Suburbia 70051507 y Sincronización EC (HU-020..023, HU-19, HU-41, HU-44, HU-45)]
+*Estructuras corporativas sin grupos en Compras, PAC sin funciones no comerciales, nodo Suburbia 70051507 y contrato P-01 de EC.*
 
-#### `GET /api/v1/audit/logs`
-* **Feature / Historia:** Feature 03-B | `HU-68` (`HU-064`, `HU-065`)
-* **Propósito:** Consulta paginada de la bitácora inmutable de auditoría con los 9 campos obligatorios del ERF §7 (`actorType`, `userId`, `technicalPrincipal`, `eventCategory`, `action`, `entityType`, `entityId`, `correlationId`, `result`). Soporta filtros por rango de fechas, tienda, acción, usuario y categoría.
-
-#### `GET /api/v1/audit/logs/:eventId`
-* **Feature / Historia:** Feature 03-B | `HU-68` (`HU-066`)
-* **Propósito:** Detalle exhaustivo del evento de auditoría para visores de cambios (modal de `<HistoryIcon />` en frontend), mostrando el estado previo (`beforeValue`) y el nuevo (`afterValue`) en formato JSON diff estructurado.
-
----
-
-### 9. Feature 03-C — Cargas Masivas Iniciales (CU-CIN-001)
-
-#### `GET /api/v1/admin/batch-import/layout`
-* **Feature / Historia:** Feature 03-C | `HU-69` (`HU-062`)
-* **Propósito:** Diccionario de campos oficiales requeridos para la carga inicial y descarga directa de la plantilla oficial en formato CSV o TXT delimitado por pipes (`?format=CSV` o `?format=TXT`).
-
-#### `POST /api/v1/admin/batch-import`
-* **Feature / Historia:** Feature 03-C | `HU-69` (`HU-063`, `HU-067`)
-* **Propósito:** Carga masiva transaccional de estructuras y asignaciones comerciales:
-  * Si `dryRun=true`: Modo prueba que ejecuta todas las validaciones sintácticas, de catálogo y de negocio (regla `RN-010`) retornando el desglose de errores por fila y columna sin modificar la base de datos.
-  * Si `dryRun=false`: Ejecuta la carga en una sola transacción ACID todo-o-nada y genera el registro en la bitácora de auditoría.
+* `GET /api/v1/structures/config/base-departments` — `StructuresComprasPacController_getBaseDepartmentsConfig`
+  * **Descripción:** Consultar Configuración de Departamentos Base para Compras y PAC (HU-022 / DEC-15).
+* `PUT /api/v1/structures/config/base-departments` — `StructuresComprasPacController_updateBaseDepartmentsConfig`
+  * **Descripción:** Actualizar Configuración de Departamentos Base para Compras y PAC (HU-022 / DEC-15).
+* `GET /api/v1/structures/compras-pac/tree` — `StructuresComprasPacController_getComprasPacTree`
+  * **Descripción:** Navegar Estructura de Compras (Hardline/Softline) sin grupos (DEC-01) y PAC con Exclusión No Comercial (HU-020, HU-021, HU-023).
+* `GET /api/v1/structures/suburbia-advisors` — `StructuresComprasPacController_getSuburbiaAdvisors`
+  * **Descripción:** Consultar Nodo Intermedio Suburbia 70051507 - Asesor Especializado Experiencia Cliente (HU-19 / DEC-16).
+* `GET /api/v1/structures/collaborators/{employeeId}/managed-sections` — `StructuresComprasPacController_getCollaboratorManagedSections`
+  * **Descripción:** Consultar Secciones que Administra un Colaborador (Sección Ancla + Secciones Heredadas del Grupo) (HU-41).
+* `POST /api/v1/structures/integrations/ec/events` — `StructuresComprasPacController_processEcInboundEvent`
+  * **Descripción:** Procesar Evento Entrante de Employee Central (Altas, Bajas, Transferencias, Cambios de Líder y Ancla) (HU-45).
+* `POST /api/v1/structures/integrations/ec/sync-managed-sections` — `StructuresComprasPacController_syncManagedSectionsToEc`
+  * **Descripción:** Sincronizar 'Secciones que administra' hacia Employee Central bajo contrato P-01 (HU-44).
+* `GET /api/v1/structures/integrations/ec/outbox` — `StructuresComprasPacController_getEcOutbox`
+  * **Descripción:** Consultar Bandeja de Salida (Outbox P-01) hacia Employee Central (HU-44).
 
 ---
 
-### 10. Monitoreo y Salud del Sistema
+### [Planificación Futura, Cambios Programados y Calendario de Corte (HU-48/49, HU-049 a HU-052)]
+*Derivación Copy-on-Write, ciclo de vida de cambios programados y activación de periodos.*
 
-#### `GET /api/v1/health`
-* **Propósito:** Health check operativo para orquestadores Kubernetes / balanceadores de carga. Valida conectividad activa con PostgreSQL y el estado general de los servicios del backend.
+* `PUT /api/v1/structures/calendar/operational-cutoff` — `StructuresPlanningController_configureOperationalCutoff`
+  * **Descripción:** Configurar Calendario Operativo de Corte y Ventana de Edición / Bloqueo (HU-052 / ERF §7).
+* `POST /api/v1/structures/departments/{departmentId}/future-draft/init` — `StructuresPlanningController_initFutureDraft`
+  * **Descripción:** Derivar / Clonar Estructura Futura (Copy-on-Write mes + 1) desde Periodo Vigente (HU-48 / HU-49 / HU-047).
+* `GET /api/v1/structures/scheduled-changes` — `StructuresPlanningController_listScheduledChanges`
+  * **Descripción:** Listar Cambios Estructurales Programados para Periodos Futuros (HU-049).
+* `POST /api/v1/structures/scheduled-changes` — `StructuresPlanningController_createScheduledChange`
+  * **Descripción:** Programar Cambio Estructural para Periodo Futuro (HU-049).
+* `PUT /api/v1/structures/scheduled-changes/{changeId}` — `StructuresPlanningController_updateScheduledChange`
+  * **Descripción:** Editar Cambio Programado Antes de su Fecha de Vigencia (HU-049 / CU-ADM-006 A5).
+* `POST /api/v1/structures/scheduled-changes/{changeId}/cancel` — `StructuresPlanningController_cancelScheduledChange`
+  * **Descripción:** Cancelar Cambio Programado Antes de su Entrada en Vigor con Bitácora (HU-050 / CU-ADM-006 A6).
+* `POST /api/v1/structures/periods/{periodCode}/activate` — `StructuresPlanningController_activatePlannedPeriod`
+  * **Descripción:** Activar Planificación Publicada del Periodo en su Fecha de Vigencia y Archivar Snapshot Anterior (HU-051).
+
+---
+
+### [Feature 03: Reportes Dinámicos y Exportación CSV / TXT (CU-EST-002, CU-EST-003 / HU-62..67)]
+*Vistas previas por rol y general, modelos de compensación y exportación CSV / TXT.*
+
+* `GET /api/v1/reports/metadata/columns` — `ReportsController_getMetadataColumns`
+  * **Descripción:** Catálogo de Columnas y Metadatos de Reportes (HU-65 / HU-057) en 3 categorías (`estructura`, `puestosPersonas`, `relaciones`), excluyendo campos sensibles si carece de permiso.
+* `GET /api/v1/reports/metadata/filter-options` — `ReportsController_getAuthorizedFilterOptions`
+  * **Descripción:** Opciones de Filtros Acotadas al Alcance del Usuario (CU-EST-002 / FA-01).
+* `GET /api/v1/reports/role-based` — `ReportsController_getRoleBasedReport`
+  * **Descripción:** Generar Vista Previa de Reporte por Rol (CU-EST-002 / HU-63 / HU-055) con validación de fechas (FE-02), alcance (CA-09), autoselección (FA-01), proyección dinámica y fotografías históricas sin sustitución silenciosa (FE-05).
+* `GET /api/v1/reports/general` — `ReportsController_getGeneralReport`
+  * **Descripción:** Generar Vista Previa de Reporte General (CU-EST-003 / HU-64 / HU-056) exigiendo permiso `REPORTS_GLOBAL_VIEW`.
+* `GET /api/v1/reports/compensations` — `ReportsController_getCompensationsReport`
+  * **Descripción:** Reportes Especializados para Modelos de Compensaciones y Productividad (HU-67 / HU-061..063) en 6 variantes (`JEFES_CON_SECCION`, `GERENTES`, `JEFES`, `PRODUCTIVIDAD_10_COL`, `PRODUCTIVIDAD_FILA`, `OPERACIONES_ZDEPTOS`).
+* `GET /api/v1/reports/export/csv` — `ReportsController_exportCsv`
+  * **Descripción:** Exportación de Reporte en formato CSV (CU-EST-002, CU-EST-003 / HU-66 / HU-058 / DEC-10) con BOM UTF-8 y preservación de ceros para SAP (`="00123"`).
+* `GET /api/v1/reports/export/txt` — `ReportsController_exportTxt`
+  * **Descripción:** Exportación de Reporte en formato TXT delimitado por Pipes (HU-66 / HU-059 / DEC-10 / PROP-04).
+
+---
+
+### [Feature 03: Historial y Bitácora de Auditoría (CU-HIS-001 / HU-68)]
+*Bitácora inmutable de movimientos con filtros por fecha, acción, usuario y tienda.*
+
+* `GET /api/v1/audit/logs` — `AuditController_getAuditLogs`
+  * **Descripción:** Consultar y filtrar historial de movimientos de auditoría (CU-HIS-001 / HU-68 / HU-065) con los 9 campos obligatorios del ERF §7.
+* `GET /api/v1/audit/logs/{eventId}` — `AuditController_getAuditLogById`
+  * **Descripción:** Consultar detalle de un movimiento de auditoría (HU-066) con diff JSON `beforeValue` y `afterValue`.
+
+---
+
+### [Feature 03: Cargas Masivas Iniciales y Layout (CU-CIN-001 / HU-69)]
+*Plantilla oficial y procesamiento transaccional de cargas iniciales con dryRun.*
+
+* `GET /api/v1/admin/batch-import/layout` — `BatchImportController_getLayout`
+  * **Descripción:** Descargar especificación y plantilla de layout vigente (CU-CIN-001 / HU-068).
+* `POST /api/v1/admin/batch-import` — `BatchImportController_executeBatchImport`
+  * **Descripción:** Validar y ejecutar carga masiva inicial de grupos y secciones (HU-69 / HU-067, HU-068) con modo prueba (`dryRun=true`) y ejecución transaccional ACID (`dryRun=false`).
 
 ---
 
 ## 🛡️ Calidad, Pruebas y Seguridad
 
 * **Pruebas Automatizadas Jest:** 14 suites de prueba pasando al 100% (**75 tests unitarios en verde**).
-* **Compilación TypeScript Estricta:** `npm run typecheck` (`tsc --noEmit`) sin advertencias ni tipos `any` inseguros.
+* **Compilación TypeScript Estricta:** `npm run typecheck` (`tsc --noEmit`) con 0 errores.
 * **Seguridad y Control de Acceso:** Guards `ApiKeyGuard`, `PermissionsGuard`, `RequirePermissions` y `SearchScopeEnforcer`.
-* **Cumplimiento Gitleaks:** Cero secretos, tokens o credenciales expuestas en el repositorio.
+* **Cumplimiento Gitleaks:** Cero secretos o credenciales expuestas en el repositorio.
