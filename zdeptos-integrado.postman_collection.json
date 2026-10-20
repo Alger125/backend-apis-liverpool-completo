@@ -1,0 +1,660 @@
+{
+  "info": {
+    "_postman_id": "zdeptos-api-integrado-v3",
+    "name": "ZDeptos API - Backend Integrado Liverpool (Features 01, 02 & 03)",
+    "description": "Colección integral de pruebas para ZDeptos API (Servicios Liverpool):\n- Feature 01: Seguridad, Roles, Permisos y Excepciones.\n- Feature 02: Geografía, Árbol de 6 Niveles, Grupos Comerciales, Secciones Fijas/Virtuales, Drag & Drop, Calendario y Publicación.\n- Feature 03: Reportes y Exportación CSV / TXT, Historial de Auditoría Inmutable (ERF §7) y Cargas Iniciales Masivas (CU-CIN-001).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "apiKey",
+      "value": "dev-api-key-zdeptos-2026",
+      "type": "string"
+    },
+    {
+      "key": "locationId",
+      "value": "f62b081e-4cc2-518a-b840-a7afa915cd3d",
+      "type": "string"
+    },
+    {
+      "key": "departmentId",
+      "value": "7882a45f-8ad2-5009-8d9e-5f6f81671fc8",
+      "type": "string"
+    },
+    {
+      "key": "period",
+      "value": "2026-10",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Health & Monitoreo",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Feature 01: Seguridad, Roles y Permisos",
+      "item": [
+        {
+          "name": "Listar Roles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Catálogo de Permisos Agrupados",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/permissions/grouped",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions",
+                "grouped"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Catálogo Simple de Permisos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar Alcances de Acceso (Access Scopes)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/access-scopes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "access-scopes"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Feature 02: Geografía y Árbol de Estructura",
+      "item": [
+        {
+          "name": "Listar Zonas Comerciales",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/geography/zones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "geography",
+                "zones"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Resumen de Tienda (Summary Header)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/structures/locations/{{locationId}}/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "structures",
+                "locations",
+                "{{locationId}}",
+                "summary"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Árbol Jerárquico de 6 Niveles con Grupos y Mancuernas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/structures/tree?locationId={{locationId}}&period={{period}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "structures",
+                "tree"
+              ],
+              "query": [
+                {
+                  "key": "locationId",
+                  "value": "{{locationId}}"
+                },
+                {
+                  "key": "period",
+                  "value": "{{period}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar Secciones Disponibles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/structures/departments/{{departmentId}}/available-sections",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "structures",
+                "departments",
+                "{{departmentId}}",
+                "available-sections"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar Corte Operativo de Calendario",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/structures/calendar/operational-cutoff?period={{period}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "structures",
+                "calendar",
+                "operational-cutoff"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "{{period}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Feature 03: Reportes y Exportación CSV / TXT",
+      "item": [
+        {
+          "name": "Catálogo de Columnas y Metadatos de Reportes (HU-65 / HU-057)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/metadata/columns",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "metadata",
+                "columns"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Vista Previa de Reporte por Rol (CU-EST-002 / HU-63)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/role-based?period={{period}}&page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "role-based"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "{{period}}"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Vista Previa de Reporte General (CU-EST-003 / HU-64)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/general?period={{period}}&division=LIVERPOOL&page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "general"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "{{period}}"
+                },
+                {
+                  "key": "division",
+                  "value": "LIVERPOOL"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reporte de Compensaciones (HU-67 - JEFES_CON_SECCION)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/compensations?period={{period}}&variant=JEFES_CON_SECCION&page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "compensations"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "{{period}}"
+                },
+                {
+                  "key": "variant",
+                  "value": "JEFES_CON_SECCION"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Exportar Reporte a CSV (HU-66 / HU-058 / DEC-10)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/export/csv?reportType=ROLE_BASED&period={{period}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "export",
+                "csv"
+              ],
+              "query": [
+                {
+                  "key": "reportType",
+                  "value": "ROLE_BASED"
+                },
+                {
+                  "key": "period",
+                  "value": "{{period}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Exportar Reporte a TXT Pipe-Delimited (HU-66 / HU-059 / PROP-04)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/export/txt?reportType=ROLE_BASED&period={{period}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "export",
+                "txt"
+              ],
+              "query": [
+                {
+                  "key": "reportType",
+                  "value": "ROLE_BASED"
+                },
+                {
+                  "key": "period",
+                  "value": "{{period}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Feature 03: Historial y Auditoría Inmutable",
+      "item": [
+        {
+          "name": "Consultar Historial de Movimientos (CU-HIS-001 / HU-68)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/audit/logs?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit",
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filtrar Auditoría por Acción (ej: SECTION_MOVED)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/audit/logs?action=SECTION_MOVED&page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit",
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "action",
+                  "value": "SECTION_MOVED"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Feature 03: Cargas Masivas Iniciales",
+      "item": [
+        {
+          "name": "Descargar Diccionario de Layout (JSON) (CU-CIN-001 / HU-068)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/batch-import/layout?format=JSON",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "batch-import",
+                "layout"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "JSON"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Descargar Plantilla CSV Oficial (CU-CIN-001 / HU-068)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/batch-import/layout?format=CSV",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "batch-import",
+                "layout"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "CSV"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Validar Carga Masiva en Modo Prueba (dryRun=true)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"carga_inicial_tiendas.csv\",\n  \"dryRun\": true,\n  \"period\": \"2026-10\",\n  \"rows\": [\n    {\n      \"locationCode\": \"LOC-001\",\n      \"parentDepartmentCode\": \"DEP-001\",\n      \"groupName\": \"Grupo Belleza 1\",\n      \"groupCode\": \"01\",\n      \"sectionCode\": \"SEC-001\",\n      \"assignmentOrigin\": \"INITIAL_LOAD\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/batch-import",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "batch-import"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

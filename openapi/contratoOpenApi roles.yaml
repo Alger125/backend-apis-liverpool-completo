@@ -1,0 +1,478 @@
+openapi: 3.0.3
+info:
+  title: ZDeptos Security API
+  version: 1.0.0
+  description: API del primer vertical de seguridad para Roles y Permisos.
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local
+tags:
+  - name: Roles
+    description: Administración de roles
+  - name: Permissions
+    description: Consulta del catálogo de permisos
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Verificar disponibilidad de la API
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: La API está disponible
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - status
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - ok
+              example:
+                status: ok
+  /roles:
+    get:
+      tags: [Roles]
+      summary: Consultar roles
+      operationId: searchRoles
+      x-permissions: [ROLE_VIEW]
+      parameters:
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/RoleStatusQuery'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/RoleSort'
+      responses:
+        '200':
+          description: Roles encontrados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RolePageResponse'
+              example:
+                items:
+                  - id: 3d377584-c0c5-4391-b4f9-b11ae93f4bfd
+                    code: STRUCTURE_ADMIN
+                    name: Administrador de estructuras
+                    description: Administra grupos y secciones.
+                    status: ACTIVE
+                    protected: false
+                    permissionCount: 4
+                    version: 3
+                    updatedAt: '2026-09-22T10:30:00-06:00'
+                page: 0
+                pageSize: 20
+                totalItems: 1
+                totalPages: 1
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Roles]
+      summary: Crear rol
+      description: Crea un rol activo y asocia los permisos seleccionados. El código técnico se genera en backend.
+      operationId: createRole
+      x-permissions: [ROLE_CREATE]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRoleRequest' }
+            example:
+              name: Administrador de estructuras
+              description: Administra grupos y secciones.
+              permissionCodes: [GROUP_VIEW, GROUP_CREATE, GROUP_UPDATE, SECTION_ASSIGN]
+      responses:
+        '201':
+          description: Rol creado
+          headers:
+            Location:
+              description: URI del rol creado
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Role' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /roles/{roleId}:
+    get:
+      tags: [Roles]
+      summary: Obtener detalle de rol
+      operationId: getRole
+      x-permissions: [ROLE_VIEW]
+      parameters:
+        - $ref: '#/components/parameters/RoleId'
+      responses:
+        '200':
+          description: Rol encontrado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Role' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Roles]
+      summary: Actualizar rol
+      description: Actualiza el rol usando control de concurrencia optimista mediante version.
+      operationId: updateRole
+      x-permissions: [ROLE_UPDATE]
+      parameters:
+        - $ref: '#/components/parameters/RoleId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateRoleRequest' }
+            example:
+              name: Administrador de estructuras
+              description: Administra grupos, secciones y movimientos.
+              permissionCodes:
+                [GROUP_VIEW, GROUP_CREATE, GROUP_UPDATE, SECTION_ASSIGN, SECTION_MOVE]
+              version: 3
+      responses:
+        '200':
+          description: Rol actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Role' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Roles]
+      summary: Eliminar rol lógicamente
+      description: Marca el rol como DELETED y revoca asignaciones vigentes. Los roles protegidos no pueden eliminarse.
+      operationId: deleteRole
+      x-permissions: [ROLE_DELETE]
+      parameters:
+        - $ref: '#/components/parameters/RoleId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeleteRoleRequest' }
+            example:
+              reason: Rol sustituido por una nueva definición.
+              version: 3
+      responses:
+        '204': { description: Rol eliminado lógicamente }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /roles/{roleId}/impact:
+    get:
+      tags: [Roles]
+      summary: Consultar impacto del rol
+      operationId: getRoleImpact
+      x-permissions: [ROLE_IMPACT_VIEW]
+      parameters:
+        - $ref: '#/components/parameters/RoleId'
+      responses:
+        '200':
+          description: Impacto calculado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoleImpact' }
+              example:
+                roleId: 3d377584-c0c5-4391-b4f9-b11ae93f4bfd
+                protected: false
+                activeAssignments: 27
+                activeExceptions: 3
+                canDelete: true
+                warnings:
+                  - Las asignaciones activas serán revocadas.
+                  - Existen excepciones vinculadas al rol.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /permissions:
+    get:
+      tags: [Permissions]
+      summary: Consultar permisos
+      operationId: getPermissions
+      x-permissions: [PERMISSION_VIEW]
+      parameters:
+        - name: module
+          in: query
+          schema: { type: string, maxLength: 50 }
+        - name: assignable
+          in: query
+          schema: { type: boolean, default: true }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/CatalogStatus' }
+      responses:
+        '200':
+          description: Permisos encontrados
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Permission' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /permissions/grouped:
+    get:
+      tags: [Permissions]
+      summary: Consultar permisos agrupados
+      description: Devuelve permisos activos y asignables agrupados por módulo para la matriz de permisos.
+      operationId: getGroupedPermissions
+      x-permissions: [PERMISSION_VIEW]
+      responses:
+        '200':
+          description: Permisos agrupados por módulo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermissionModuleResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+components:
+  parameters:
+    RoleId:
+      name: roleId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    Search:
+      name: search
+      in: query
+      schema: { type: string, maxLength: 100 }
+      description: Busca por código, nombre o descripción.
+    RoleStatusQuery:
+      name: status
+      in: query
+      schema: { $ref: '#/components/schemas/RoleStatus' }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+    PageSize:
+      name: pageSize
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    RoleSort:
+      name: sort
+      in: query
+      description: Campo y dirección, por ejemplo name,asc.
+      schema:
+        type: string
+        default: name,asc
+        pattern: '^(code|name|status|updatedAt),(asc|desc)$'
+  schemas:
+    RoleStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE, DELETED]
+    CatalogStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE]
+    RoleSummary:
+      type: object
+      required: [id, code, name, status, protected, permissionCount, version, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string, maxLength: 80, example: STRUCTURE_ADMIN }
+        name: { type: string, maxLength: 150, example: Administrador de estructuras }
+        description: { type: string, maxLength: 500, nullable: true }
+        status: { $ref: '#/components/schemas/RoleStatus' }
+        protected:
+          type: boolean
+          description: Indica si es un rol de sistema que no puede eliminarse.
+        permissionCount:
+          type: integer
+          minimum: 0
+          description: Cantidad de permisos activos asociados.
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Versión para concurrencia optimista.
+        updatedAt:
+          type: string
+          format: date-time
+          description: Fecha y hora de la última modificación.
+    Role:
+      allOf:
+        - $ref: '#/components/schemas/RoleSummary'
+        - type: object
+          required: [permissions]
+          properties:
+            permissions:
+              type: array
+              items: { $ref: '#/components/schemas/Permission' }
+    Permission:
+      type: object
+      required:
+        [
+          code,
+          module,
+          action,
+          displayName,
+          description,
+          displayOrder,
+          assignable,
+          sensitive,
+          status,
+        ]
+      properties:
+        code: { type: string, maxLength: 100, example: GROUP_CREATE }
+        module: { type: string, maxLength: 50, example: COMMERCIAL_GROUPS }
+        action: { type: string, maxLength: 80, example: CREATE }
+        displayName: { type: string, maxLength: 150, example: Crear grupo }
+        description: { type: string, maxLength: 500 }
+        displayOrder: { type: integer, minimum: 1 }
+        assignable: { type: boolean }
+        sensitive: { type: boolean }
+        status: { $ref: '#/components/schemas/CatalogStatus' }
+        notes: { type: string, maxLength: 500, nullable: true }
+    PermissionModule:
+      type: object
+      required: [code, displayName, displayOrder, permissions]
+      properties:
+        code: { type: string, maxLength: 50 }
+        displayName: { type: string, maxLength: 150 }
+        description: { type: string, maxLength: 500 }
+        displayOrder: { type: integer, minimum: 1 }
+        permissions:
+          type: array
+          items: { $ref: '#/components/schemas/Permission' }
+    PermissionModuleResponse:
+      type: object
+      required: [modules]
+      properties:
+        modules:
+          type: array
+          items: { $ref: '#/components/schemas/PermissionModule' }
+    CreateRoleRequest:
+      type: object
+      additionalProperties: false
+      required: [name, description, permissionCodes]
+      properties:
+        name: { type: string, minLength: 3, maxLength: 150 }
+        description: { type: string, minLength: 1, maxLength: 500 }
+        permissionCodes:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string, maxLength: 100 }
+    UpdateRoleRequest:
+      type: object
+      additionalProperties: false
+      required: [name, description, permissionCodes, version]
+      properties:
+        name: { type: string, minLength: 3, maxLength: 150 }
+        description: { type: string, minLength: 1, maxLength: 500 }
+        permissionCodes:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string, maxLength: 100 }
+        version: { type: integer, format: int64, minimum: 0 }
+    DeleteRoleRequest:
+      type: object
+      additionalProperties: false
+      required: [reason, version]
+      properties:
+        reason: { type: string, minLength: 5, maxLength: 500 }
+        version: { type: integer, format: int64, minimum: 0 }
+    RoleImpact:
+      type: object
+      required: [roleId, protected, activeAssignments, activeExceptions, canDelete, warnings]
+      properties:
+        roleId: { type: string, format: uuid }
+        protected: { type: boolean }
+        activeAssignments: { type: integer, minimum: 0 }
+        activeExceptions: { type: integer, minimum: 0 }
+        canDelete: { type: boolean }
+        warnings:
+          type: array
+          items: { type: string }
+    RolePageResponse:
+      type: object
+      required: [items, page, pageSize, totalItems, totalPages]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/RoleSummary' }
+        page: { type: integer, minimum: 0 }
+        pageSize: { type: integer, minimum: 1 }
+        totalItems: { type: integer, format: int64, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+    FieldError:
+      type: object
+      required: [field, message]
+      properties:
+        field: { type: string }
+        message: { type: string }
+        rejectedValue:
+          nullable: true
+          description: Valor rechazado.
+    ProblemDetails:
+      type: object
+      required: [type, title, status, detail, instance, code, timestamp, correlationId]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer, format: int32 }
+        detail: { type: string }
+        instance: { type: string }
+        code: { type: string }
+        timestamp: { type: string, format: date-time }
+        correlationId: { type: string }
+        errors:
+          type: array
+          items: { $ref: '#/components/schemas/FieldError' }
+    ConflictProblem:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetails'
+        - type: object
+          properties:
+            currentVersion: { type: integer, format: int64, minimum: 0 }
+  responses:
+    BadRequest:
+      description: Solicitud inválida
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    Unauthorized:
+      description: Autenticación requerida
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    Forbidden:
+      description: Permiso insuficiente
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    Conflict:
+      description: Conflicto de negocio o concurrencia
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ConflictProblem' }
+          example:
+            type: /problems/role-version-conflict
+            title: Conflicto de versión
+            status: 409
+            detail: El rol fue modificado por otro usuario.
+            instance: /api/v1/roles/3d377584-c0c5-4391-b4f9-b11ae93f4bfd
+            code: ROLE_VERSION_CONFLICT
+            timestamp: '2026-09-22T10:35:00-06:00'
+            correlationId: corr-01
+            currentVersion: 5

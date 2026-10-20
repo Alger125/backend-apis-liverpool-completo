@@ -1,0 +1,576 @@
+{
+  "info": {
+    "_postman_id": "zdeptos-estructuras-postman-v2",
+    "name": "ZDeptos - Feature 02: Estructuras y Grupos Comerciales (Completo)",
+    "description": "Colección completa de pruebas para ZDeptos Feature 02 (Estructura de Árbol Comercial, Selectores Geográficos, Resumen de Tienda, Gestión de Grupos, Drag & Drop de Secciones, Catálogo de Disponibles, Mancuernas de Liderazgo, Colaboradores, Concurrencia Optimista, Corte Operativo y Publicación). Alineado 100% al ERF V2.1 y Casos de Uso v1.0.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "apiKey",
+      "value": "dev-api-key-zdeptos-2026",
+      "type": "string"
+    },
+    {
+      "key": "zoneId",
+      "value": "7c76789b-da9f-500c-8efb-4f9ecfe73925",
+      "type": "string"
+    },
+    {
+      "key": "locationId",
+      "value": "f62b081e-4cc2-518a-b840-a7afa915cd3d",
+      "type": "string"
+    },
+    {
+      "key": "departmentId",
+      "value": "7882a45f-8ad2-5009-8d9e-5f6f81671fc8",
+      "type": "string"
+    },
+    {
+      "key": "groupBelleza1Id",
+      "value": "bcaa1780-4754-5a53-ad59-08d51b541b2b",
+      "type": "string"
+    },
+    {
+      "key": "groupBelleza2Id",
+      "value": "64257972-f2f8-58c6-b88e-d724c3e78cce",
+      "type": "string"
+    },
+    {
+      "key": "virtualSectionId",
+      "value": "244c4790-517c-5b2d-bd46-8e2ae2ae035f",
+      "type": "string"
+    },
+    {
+      "key": "anchorSectionId",
+      "value": "39a5a133-10f6-59a6-bccc-fb193f12b2eb",
+      "type": "string"
+    },
+    {
+      "key": "availableSectionId",
+      "value": "53dd523e-c6fe-5e99-8f44-620acb432a62",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Geografía Comercial (UC-004 / HU-13)",
+      "item": [
+        {
+          "name": "1.1 Listar Zonas Comerciales",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/geography/zones",
+              "host": ["{{baseUrl}}"],
+              "path": ["geography", "zones"]
+            },
+            "description": "Obtiene las zonas comerciales disponibles (Metro Centro, Norte, Golfo) para alimentar el selector de primer nivel."
+          }
+        },
+        {
+          "name": "1.2 Listar Tiendas por Zona (Metro Centro)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/geography/zones/{{zoneId}}/locations",
+              "host": ["{{baseUrl}}"],
+              "path": ["geography", "zones", "{{zoneId}}", "locations"]
+            },
+            "description": "Obtiene las tiendas (Locations) adscritas a la zona seleccionada (ej. Insurgentes, Satélite)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Árbol Jerárquico y Resumen (CU-EST-001 / HU-14, HU-15)",
+      "item": [
+        {
+          "name": "2.1 Consultar Árbol de Tienda (Insurgentes - Periodo Vigente)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/structures/tree?locationId={{locationId}}&period=2026-10",
+              "host": ["{{baseUrl}}"],
+              "path": ["structures", "tree"],
+              "query": [
+                {
+                  "key": "locationId",
+                  "value": "{{locationId}}"
+                },
+                {
+                  "key": "period",
+                  "value": "2026-10"
+                }
+              ]
+            },
+            "description": "Retorna la jerarquía completa de 6 niveles con líderes (cardinalidad 0..2 para mancuernas), colaboradores por grupo, secciones ancla protegidas, versión de concurrencia y bandera isReadOnly: false."
+          }
+        },
+        {
+          "name": "2.2 Consultar Árbol en Periodo Histórico (Solo Lectura - 2026-09)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/structures/tree?locationId={{locationId}}&period=2026-09",
+              "host": ["{{baseUrl}}"],
+              "path": ["structures", "tree"],
+              "query": [
+                {
+                  "key": "locationId",
+                  "value": "{{locationId}}"
+                },
+                {
+                  "key": "period",
+                  "value": "2026-09"
+                }
+              ]
+            },
+            "description": "Retorna el árbol en modo solo lectura (isReadOnly: true, periodStatus: HISTORICAL) para bloquear la edición de meses pasados en el frontend."
+          }
+        },
+        {
+          "name": "2.3 Consultar Resumen de Encabezado de Tienda (HU-15)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/structures/locations/{{locationId}}/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["structures", "locations", "{{locationId}}", "summary"]
+            },
+            "description": "Retorna datos ejecutivos de contexto (código, nombre, zona, formato y total de departamentos adscritos)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Gestión de Grupos Comerciales (CU-ADM-002, CU-ADM-003 / HU-20 a HU-26)",
+      "item": [
+        {
+          "name": "3.1 Consultar Grupos de un Departamento (HU-20)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/structures/departments/{{departmentId}}/groups",
+              "host": ["{{baseUrl}}"],
+              "path": ["structures", "departments", "{{departmentId}}", "groups"]
+            },
+            "description": "Obtiene la lista completa de grupos operativos de un departamento con sus secciones y colaboradores adscritos."
+          }
+        },
+        {
+          "name": "3.2 Crear Grupo Comercial (Autonumeración P-02)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Grupo Perfumería Especial\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/structures/departments/{{departmentId}}/groups",
+              "host": ["{{baseUrl}}"],
+              "path": ["structures", "departments", "{{departmentId}}", "groups"]
+            },
+            "description": "Crea un nuevo grupo operativo con autonumeración atómica P-02 (Grupo 001, 002...) y registra auditoría."
+          }
+        },
+        {
+          "name": "3.3 [Regla Negativa] Intentar Crear Grupo con Nombre Duplicado (Espera 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Grupo Belleza 1 Demo\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/structures/departments/{{departmentId}}/groups",
+              "host": ["{{baseUrl}}"],
+              "path": ["structures", "departments", "{{departmentId}}", "groups"]
+            },
+            "description": "Valida que no se permitan nombres de grupos duplicados en el mismo departamento comercial activo (409 Conflict)."
+          }
+        },
+        {
+          "name": "3.4 Renombrar Grupo Comercial",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Grupo Belleza y Cosméticos Actualizado\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/structures/groups/{{groupBelleza2Id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["structures", "groups", "{{groupBelleza2Id}}"]
+            },
+            "description": "Actualiza el nombre descriptivo del grupo comercial preservando su código autoincrementable."
+          }
+        },
+        {
+          "name": "3.5 [Regla Negativa] Intentar Eliminar Grupo con Ancla / Colaboradores (Espera 409)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/structures/groups/{{groupBelleza1Id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["structures", "groups", "{{groupBelleza1Id}}"]
+            },
+            "description": "CU-ADM-003: Bloquea la eliminación si el grupo cuenta con secciones ancla protegidas o colaboradores activos (409 Conflict)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Reubicación Drag & Drop y Concurrencia (CU-ADM-004, CU-ADM-008)",
+      "item": [
+        {
+          "name": "4.1 [Regla Negativa] Intentar Mover Sección Ancla (Espera 422)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": \"{{anchorSectionId}}\",\n  \"targetGroupId\": \"{{groupBelleza2Id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/structures/departments/{{departmentId}}/sections/move",
+              "host": ["{{baseUrl}}"],
+              "path": ["structures", "departments", "{{departmentId}}", "sections", "move"]
+            },
+            "description": "RN-030 / HU-37: Bloquea con 422 Unprocessable Entity el intento de reubicar secciones ancla protegidas."
+          }
+        },
+        {
+          "name": "4.2 Mover Sección Virtual entre Grupos (Drag & Drop)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "If-Match",
+                "value": "1"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": \"{{virtualSectionId}}\",\n  \"targetGroupId\": \"{{groupBelleza1Id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/structures/departments/{{departmentId}}/sections/move",
+              "host": ["{{baseUrl}}"],
+              "path": ["structures", "departments", "{{departmentId}}", "sections", "move"]
+            },
+            "description": "Reubica una sección virtual y eleva atómicamente la versión del departamento."
+          }
+        },
+        {
+          "name": "4.3 [Regla Negativa] Conflicto de Concurrencia Optimista (Espera 409)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "If-Match",
+                "value": "0"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": \"{{virtualSectionId}}\",\n  \"targetGroupId\": \"{{groupBelleza2Id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/structures/departments/{{departmentId}}/sections/move",
+              "host": ["{{baseUrl}}"],
+              "path": ["structures", "departments", "{{departmentId}}", "sections", "move"]
+            },
+            "description": "CU-ADM-008: Envía un token If-Match obsoleto. Responde 409 Conflict."
+          }
+        },
+        {
+          "name": "4.4 Consultar Secciones Agregadas del Departamento (ERF 4.1)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/structures/departments/{{departmentId}}/aggregated-sections",
+              "host": ["{{baseUrl}}"],
+              "path": ["structures", "departments", "{{departmentId}}", "aggregated-sections"]
+            },
+            "description": "Retorna el consolidado de secciones asignadas en todos los grupos del departamento con desglose de colaboradores."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Catálogo de Secciones y Asignaciones (HU-27 a HU-39)",
+      "item": [
+        {
+          "name": "5.1 Consultar Catálogo de Secciones Disponibles (HU-27, HU-28)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/structures/departments/{{departmentId}}/available-sections",
+              "host": ["{{baseUrl}}"],
+              "path": ["structures", "departments", "{{departmentId}}", "available-sections"]
+            },
+            "description": "Retorna las secciones activas no asignadas a ningún grupo de la tienda."
+          }
+        },
+        {
+          "name": "5.2 Asignar Sección a Grupo Operativo (HU-29, HU-30)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": \"{{availableSectionId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/structures/groups/{{groupBelleza2Id}}/sections",
+              "host": ["{{baseUrl}}"],
+              "path": ["structures", "groups", "{{groupBelleza2Id}}", "sections"]
+            },
+            "description": "Asigna una sección disponible al grupo operativo con origen MANUAL."
+          }
+        },
+        {
+          "name": "5.3 [Regla Negativa] Intentar Asignar Sección ya Ocupada (Espera 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": \"{{anchorSectionId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/structures/groups/{{groupBelleza2Id}}/sections",
+              "host": ["{{baseUrl}}"],
+              "path": ["structures", "groups", "{{groupBelleza2Id}}", "sections"]
+            },
+            "description": "Rechaza con 409 Conflict la asignación de una sección que ya pertenece a otro grupo."
+          }
+        },
+        {
+          "name": "5.4 Desasignar Sección Virtual (HU-34)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/structures/groups/{{groupBelleza2Id}}/sections/{{availableSectionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["structures", "groups", "{{groupBelleza2Id}}", "sections", "{{availableSectionId}}"]
+            },
+            "description": "Desvincula una sección virtual retornándola al catálogo de disponibles."
+          }
+        },
+        {
+          "name": "5.5 [Regla Negativa] Intentar Desasignar Sección Ancla (Espera 422)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/structures/groups/{{groupBelleza1Id}}/sections/{{anchorSectionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["structures", "groups", "{{groupBelleza1Id}}", "sections", "{{anchorSectionId}}"]
+            },
+            "description": "HU-37: Bloquea con 422 Unprocessable Entity el intento de desasignar una sección ancla."
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Calendario Operativo y Publicación (HU-48, HU-52 / CU-ADM-005)",
+      "item": [
+        {
+          "name": "6.1 Consultar Corte Operativo del Periodo (HU-52)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/structures/calendar/operational-cutoff?period=2026-10",
+              "host": ["{{baseUrl}}"],
+              "path": ["structures", "calendar", "operational-cutoff"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "2026-10"
+                }
+              ]
+            },
+            "description": "Retorna fechas de corte operativo, días restantes y estado de editabilidad del periodo."
+          }
+        },
+        {
+          "name": "6.2 [Regla Negativa] Publicar Departamento con Anclas Huérfanas (Espera 422 / HU-39)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-dev-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"period\": \"2026-10\",\n  \"notes\": \"Intento de publicación sin cubrir todas las anclas\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/structures/departments/{{departmentId}}/publish",
+              "host": ["{{baseUrl}}"],
+              "path": ["structures", "departments", "{{departmentId}}", "publish"]
+            },
+            "description": "HU-39 / CU-ADM-005: Valida que no se pueda publicar una estructura con secciones ancla huérfanas sin asignar."
+          }
+        }
+      ]
+    }
+  ]
+}

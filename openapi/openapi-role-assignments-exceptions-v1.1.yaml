@@ -1,0 +1,531 @@
+openapi: 3.1.1
+info:
+  title: ZDeptos - Users, Role Assignments and Exceptions API
+  version: 1.1.0
+  description: Contract aligned with employee_reference, access_scope, multiple scopes per assignment and SCHEDULED status.
+servers:
+  - url: http://localhost:3000/api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: Users
+  - name: Access scopes
+  - name: Role assignments
+  - name: Role exceptions
+paths:
+  /users:
+    get:
+      tags: [Users]
+      operationId: searchUsers
+      summary: Search application users
+      description: Search by display name, email, employee number, employee name or external assignment ID.
+      x-permissions: [USER_VIEW]
+      parameters:
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200': { $ref: '#/components/responses/UserPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /users/{userId}:
+    get:
+      tags: [Users]
+      operationId: getUserById
+      summary: Get user detail
+      x-permissions: [USER_VIEW]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AppUserDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /users/{userId}/role-assignments:
+    get:
+      tags: [Role assignments]
+      operationId: searchUserRoleAssignments
+      summary: Search assignments for one user
+      x-permissions: [ROLE_ASSIGNMENT_VIEW]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/EffectiveOn'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200': { $ref: '#/components/responses/AssignmentPage' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /users/{userId}/role-exceptions:
+    get:
+      tags: [Role exceptions]
+      operationId: searchUserRoleExceptions
+      summary: Search exceptions for one user
+      x-permissions: [ROLE_EXCEPTION_VIEW]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/EffectiveOn'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200': { $ref: '#/components/responses/ExceptionPage' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /access-scopes:
+    get:
+      tags: [Access scopes]
+      operationId: searchAccessScopes
+      summary: Search reusable access scopes
+      description: Returns GLOBAL, STRUCTURE_VARIANT and NODE records from zd_security.access_scope.
+      x-permissions: [STRUCTURE_VIEW]
+      parameters:
+        - $ref: '#/components/parameters/Search'
+        - name: scopeType
+          in: query
+          schema: { $ref: '#/components/schemas/AccessScopeType' }
+        - name: structureVariantId
+          in: query
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200': { $ref: '#/components/responses/AccessScopePage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /role-assignments:
+    get:
+      tags: [Role assignments]
+      operationId: searchRoleAssignments
+      summary: Search role assignments
+      x-permissions: [ROLE_ASSIGNMENT_VIEW]
+      parameters:
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/EffectiveOn'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200': { $ref: '#/components/responses/AssignmentPage' }
+    post:
+      tags: [Role assignments]
+      operationId: createRoleAssignment
+      summary: Assign one role with one or more access scopes
+      x-permissions: [ROLE_ASSIGNMENT_CREATE]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRoleAssignmentRequest' }
+      responses:
+        '201':
+          description: Assignment created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoleAssignment' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /role-assignments/{assignmentId}:
+    get:
+      tags: [Role assignments]
+      operationId: getRoleAssignmentById
+      x-permissions: [ROLE_ASSIGNMENT_VIEW]
+      parameters:
+        - $ref: '#/components/parameters/AssignmentId'
+      responses:
+        '200':
+          description: Assignment detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoleAssignment' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Role assignments]
+      operationId: updateRoleAssignment
+      x-permissions: [ROLE_ASSIGNMENT_UPDATE]
+      parameters:
+        - $ref: '#/components/parameters/AssignmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateRoleAssignmentRequest' }
+      responses:
+        '200':
+          description: Assignment updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoleAssignment' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /role-assignments/{assignmentId}/revoke:
+    post:
+      tags: [Role assignments]
+      operationId: revokeRoleAssignment
+      x-permissions: [ROLE_ASSIGNMENT_REVOKE]
+      parameters:
+        - $ref: '#/components/parameters/AssignmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RevokeAccessRequest' }
+      responses:
+        '200':
+          description: Assignment revoked
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoleAssignment' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /role-assignments/impact:
+    post:
+      tags: [Role assignments]
+      operationId: previewRoleAssignmentImpact
+      x-permissions: [ROLE_ASSIGNMENT_IMPACT_VIEW]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRoleAssignmentRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/Impact' }
+  /role-exceptions:
+    get:
+      tags: [Role exceptions]
+      operationId: searchRoleExceptions
+      x-permissions: [ROLE_EXCEPTION_VIEW]
+      parameters:
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/EffectiveOn'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200': { $ref: '#/components/responses/ExceptionPage' }
+    post:
+      tags: [Role exceptions]
+      operationId: createRoleException
+      summary: Grant a temporary additive role exception
+      x-permissions: [ROLE_EXCEPTION_CREATE]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRoleExceptionRequest' }
+      responses:
+        '201':
+          description: Exception created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoleException' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /role-exceptions/{exceptionId}:
+    get:
+      tags: [Role exceptions]
+      operationId: getRoleExceptionById
+      x-permissions: [ROLE_EXCEPTION_VIEW]
+      parameters:
+        - $ref: '#/components/parameters/ExceptionId'
+      responses:
+        '200':
+          description: Exception detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoleException' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Role exceptions]
+      operationId: updateRoleException
+      x-permissions: [ROLE_EXCEPTION_UPDATE]
+      parameters:
+        - $ref: '#/components/parameters/ExceptionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateRoleExceptionRequest' }
+      responses:
+        '200':
+          description: Exception updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoleException' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /role-exceptions/{exceptionId}/revoke:
+    post:
+      tags: [Role exceptions]
+      operationId: revokeRoleException
+      x-permissions: [ROLE_EXCEPTION_REVOKE]
+      parameters:
+        - $ref: '#/components/parameters/ExceptionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RevokeAccessRequest' }
+      responses:
+        '200':
+          description: Exception revoked
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoleException' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /role-exceptions/impact:
+    post:
+      tags: [Role exceptions]
+      operationId: previewRoleExceptionImpact
+      x-permissions: [ROLE_EXCEPTION_IMPACT_VIEW]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRoleExceptionRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/Impact' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    Search: { name: search, in: query, schema: { type: string, maxLength: 100 } }
+    EffectiveOn: { name: effectiveOn, in: query, schema: { type: string, format: date } }
+    Page: { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+    PageSize: { name: pageSize, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+    UserId: { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
+    AssignmentId: { name: assignmentId, in: path, required: true, schema: { type: string, format: uuid } }
+    ExceptionId: { name: exceptionId, in: path, required: true, schema: { type: string, format: uuid } }
+    IdempotencyKey: { name: Idempotency-Key, in: header, schema: { type: string, format: uuid } }
+  schemas:
+    AssignmentStatus: { type: string, enum: [SCHEDULED, ACTIVE, EXPIRED, REVOKED] }
+    ExceptionStatus: { type: string, enum: [SCHEDULED, ACTIVE, EXPIRED, REVOKED] }
+    RoleAssignmentOrigin: { type: string, enum: [GROUP_MAPPING, RULE_BASED, MANUAL] }
+    AccessScopeType: { type: string, enum: [GLOBAL, STRUCTURE_VARIANT, NODE] }
+    EmployeeSummary:
+      type: object
+      required: [id, assignmentIdExternal, displayName, status]
+      properties:
+        id: { type: string, format: uuid }
+        employeeNumber: { type: [string, 'null'], example: '00043724' }
+        assignmentIdExternal: { type: string }
+        userId: { type: [string, 'null'] }
+        personIdExternal: { type: [string, 'null'] }
+        displayName: { type: string }
+        email: { type: [string, 'null'], format: email }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+    AppUserSummary:
+      type: object
+      required: [id, entraObjectId, tenantId, displayName, status]
+      properties:
+        id: { type: string, format: uuid }
+        entraObjectId: { type: string, format: uuid }
+        tenantId: { type: string, format: uuid }
+        displayName: { type: string }
+        email: { type: [string, 'null'], format: email }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        employee:
+          oneOf:
+            - { $ref: '#/components/schemas/EmployeeSummary' }
+            - { type: 'null' }
+    AppUserDetail:
+      allOf:
+        - { $ref: '#/components/schemas/AppUserSummary' }
+        - type: object
+          properties:
+            firstLoginAt: { type: [string, 'null'], format: date-time }
+            lastLoginAt: { type: [string, 'null'], format: date-time }
+    RoleSummary:
+      type: object
+      required: [id, code, name, status]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        status: { type: string, enum: [ACTIVE, INACTIVE, DELETED] }
+    AccessScopeSummary:
+      type: object
+      required: [id, scopeType, displayName, status]
+      properties:
+        id: { type: string, format: uuid }
+        scopeType: { $ref: '#/components/schemas/AccessScopeType' }
+        structureNodeId: { type: [string, 'null'], format: uuid }
+        structureVariantId: { type: [string, 'null'], format: uuid }
+        displayName: { type: string }
+        path: { type: [string, 'null'] }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+    ScopeSelectionRequest:
+      type: object
+      required: [accessScopeId, includeDescendants]
+      properties:
+        accessScopeId: { type: string, format: uuid }
+        includeDescendants: { type: boolean, default: true }
+    ScopeSelection:
+      allOf:
+        - { $ref: '#/components/schemas/ScopeSelectionRequest' }
+        - type: object
+          required: [accessScope]
+          properties:
+            accessScope: { $ref: '#/components/schemas/AccessScopeSummary' }
+    CreateRoleAssignmentRequest:
+      type: object
+      additionalProperties: false
+      required: [userId, roleId, origin, scopes, validFrom]
+      properties:
+        userId: { type: string, format: uuid }
+        roleId: { type: string, format: uuid }
+        origin: { $ref: '#/components/schemas/RoleAssignmentOrigin' }
+        scopes: { type: array, minItems: 1, uniqueItems: true, items: { $ref: '#/components/schemas/ScopeSelectionRequest' } }
+        validFrom: { type: string, format: date }
+        validTo: { type: [string, 'null'], format: date }
+        notes: { type: [string, 'null'], maxLength: 500 }
+    UpdateRoleAssignmentRequest:
+      type: object
+      additionalProperties: false
+      required: [scopes, validFrom, version]
+      properties:
+        scopes: { type: array, minItems: 1, uniqueItems: true, items: { $ref: '#/components/schemas/ScopeSelectionRequest' } }
+        validFrom: { type: string, format: date }
+        validTo: { type: [string, 'null'], format: date }
+        notes: { type: [string, 'null'], maxLength: 500 }
+        version: { type: integer, format: int64, minimum: 0 }
+    CreateRoleExceptionRequest:
+      type: object
+      additionalProperties: false
+      required: [userId, roleId, scopes, validFrom, validTo, justification]
+      properties:
+        userId: { type: string, format: uuid }
+        roleId: { type: string, format: uuid }
+        scopes: { type: array, minItems: 1, uniqueItems: true, items: { $ref: '#/components/schemas/ScopeSelectionRequest' } }
+        validFrom: { type: string, format: date }
+        validTo: { type: string, format: date }
+        justification: { type: string, minLength: 10, maxLength: 1000 }
+        ticketReference: { type: [string, 'null'], maxLength: 100 }
+    UpdateRoleExceptionRequest:
+      allOf:
+        - { $ref: '#/components/schemas/CreateRoleExceptionRequest' }
+        - type: object
+          required: [version]
+          properties:
+            version: { type: integer, format: int64, minimum: 0 }
+    RoleAssignment:
+      type: object
+      required: [id, user, role, origin, scopes, status, validFrom, version, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        user: { $ref: '#/components/schemas/AppUserSummary' }
+        role: { $ref: '#/components/schemas/RoleSummary' }
+        origin: { $ref: '#/components/schemas/RoleAssignmentOrigin' }
+        scopes: { type: array, items: { $ref: '#/components/schemas/ScopeSelection' } }
+        status: { $ref: '#/components/schemas/AssignmentStatus' }
+        validFrom: { type: string, format: date }
+        validTo: { type: [string, 'null'], format: date }
+        notes: { type: [string, 'null'] }
+        version: { type: integer, format: int64 }
+        createdAt: { type: string, format: date-time }
+        createdBy: { type: [string, 'null'], format: uuid }
+        updatedAt: { type: string, format: date-time }
+        updatedBy: { type: [string, 'null'], format: uuid }
+        revokedAt: { type: [string, 'null'], format: date-time }
+        revokedBy: { type: [string, 'null'], format: uuid }
+        revocationReason: { type: [string, 'null'] }
+    RoleException:
+      type: object
+      required: [id, user, role, scopes, status, validFrom, validTo, justification, version, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        user: { $ref: '#/components/schemas/AppUserSummary' }
+        role: { $ref: '#/components/schemas/RoleSummary' }
+        scopes: { type: array, items: { $ref: '#/components/schemas/ScopeSelection' } }
+        status: { $ref: '#/components/schemas/ExceptionStatus' }
+        validFrom: { type: string, format: date }
+        validTo: { type: string, format: date }
+        justification: { type: string }
+        ticketReference: { type: [string, 'null'] }
+        version: { type: integer, format: int64 }
+        createdAt: { type: string, format: date-time }
+        createdBy: { type: [string, 'null'], format: uuid }
+        updatedAt: { type: string, format: date-time }
+        updatedBy: { type: [string, 'null'], format: uuid }
+        revokedAt: { type: [string, 'null'], format: date-time }
+        revokedBy: { type: [string, 'null'], format: uuid }
+        revocationReason: { type: [string, 'null'] }
+    RevokeAccessRequest:
+      type: object
+      required: [reason, version]
+      properties:
+        reason: { type: string, minLength: 10, maxLength: 500 }
+        version: { type: integer, format: int64, minimum: 0 }
+    PageMetadata:
+      type: object
+      required: [page, pageSize, totalItems, totalPages]
+      properties:
+        page: { type: integer }
+        pageSize: { type: integer }
+        totalItems: { type: integer }
+        totalPages: { type: integer }
+    UserPageResponse:
+      allOf:
+        - { $ref: '#/components/schemas/PageMetadata' }
+        - type: object
+          properties: { items: { type: array, items: { $ref: '#/components/schemas/AppUserSummary' } } }
+    AccessScopePageResponse:
+      allOf:
+        - { $ref: '#/components/schemas/PageMetadata' }
+        - type: object
+          properties: { items: { type: array, items: { $ref: '#/components/schemas/AccessScopeSummary' } } }
+    RoleAssignmentPageResponse:
+      allOf:
+        - { $ref: '#/components/schemas/PageMetadata' }
+        - type: object
+          properties: { items: { type: array, items: { $ref: '#/components/schemas/RoleAssignment' } } }
+    RoleExceptionPageResponse:
+      allOf:
+        - { $ref: '#/components/schemas/PageMetadata' }
+        - type: object
+          properties: { items: { type: array, items: { $ref: '#/components/schemas/RoleException' } } }
+    AccessImpactResponse:
+      type: object
+      required: [user, role, requestedScopes, addedPermissionCodes, duplicatePermissionCodes, conflicts, warnings]
+      properties:
+        user: { $ref: '#/components/schemas/AppUserSummary' }
+        role: { $ref: '#/components/schemas/RoleSummary' }
+        requestedScopes: { type: array, items: { $ref: '#/components/schemas/ScopeSelection' } }
+        addedPermissionCodes: { type: array, items: { type: string } }
+        duplicatePermissionCodes: { type: array, items: { type: string } }
+        conflicts: { type: array, items: { type: string } }
+        warnings: { type: array, items: { type: string } }
+    ProblemDetails:
+      type: object
+      required: [type, title, status, detail, instance, code, timestamp, correlationId]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        code: { type: string }
+        timestamp: { type: string, format: date-time }
+        correlationId: { type: string }
+  responses:
+    UserPage:
+      description: Paginated users
+      content: { application/json: { schema: { $ref: '#/components/schemas/UserPageResponse' } } }
+    AccessScopePage:
+      description: Paginated access scopes
+      content: { application/json: { schema: { $ref: '#/components/schemas/AccessScopePageResponse' } } }
+    AssignmentPage:
+      description: Paginated assignments
+      content: { application/json: { schema: { $ref: '#/components/schemas/RoleAssignmentPageResponse' } } }
+    ExceptionPage:
+      description: Paginated exceptions
+      content: { application/json: { schema: { $ref: '#/components/schemas/RoleExceptionPageResponse' } } }
+    Impact:
+      description: Effective access impact
+      content: { application/json: { schema: { $ref: '#/components/schemas/AccessImpactResponse' } } }
+    BadRequest: { description: Invalid request, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    Unauthorized: { description: Authentication required or invalid, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    Forbidden: { description: Required permission missing, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    NotFound: { description: Resource not found, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    Conflict: { description: Duplicate, stale version or conflicting state, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    UnprocessableEntity: { description: Business validation failed, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }

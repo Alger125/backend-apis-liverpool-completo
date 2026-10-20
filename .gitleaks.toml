@@ -1,0 +1,15 @@
+title = "ZDeptos Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Placeholders deliberados y UUID de desarrollo no sensible"
+regexTarget = "match"
+regexes = [
+  '''59dd9904a0660039f427196e114342a99cc937ea72f92cd871d3c54a513b8535''',
+  '''00000000-0000-4000-8000-000000000001'''
+]
+paths = [
+  '''(^|/)package-lock\.json$'''
+]
